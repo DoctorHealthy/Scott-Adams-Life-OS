@@ -1,89 +1,101 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signout } from "../login/actions";
+import TopNav from "@/components/TopNav";
+import { prettyDate } from "@/lib/constants";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) redirect("/login");
 
   const { data: profile } = await supabase
     .from("users")
-    .select("name, email, age, height_cm, weight_kg, activity_level")
+    .select("name, email")
     .eq("id", user.id)
     .single();
+
+  const { count: activeCount } = await supabase
+    .from("systems")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("active", true);
+
+  const { data: lastEntry } = await supabase
+    .from("entries")
+    .select("date, energy_1_10, one_line")
+    .eq("user_id", user.id)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const displayName = profile?.name || user.email?.split("@")[0] || "there";
 
   return (
     <div className="shell">
-      <header className="topbar">
-        <div>
-          <span className="brand">
-            Life OS<span className="dot">.</span>
-          </span>
-        </div>
-        <div className="right">
-          <span className="muted" style={{ fontSize: 13 }}>
-            {profile?.email || user.email}
-          </span>
-          <form action={signout}>
-            <button className="btn btn-ghost" type="submit">
-              Sign out
-            </button>
-          </form>
-        </div>
-      </header>
-
+      <TopNav email={profile?.email || user.email} />
       <main className="container">
         <div className="stack">
           <div>
-            <div className="eyebrow">Phase 1 online</div>
-            <h1 style={{ marginTop: 6 }}>You&apos;re in, {displayName}.</h1>
+            <div className="eyebrow">Life OS</div>
+            <h1 style={{ marginTop: 6 }}>Good to see you, {displayName}.</h1>
             <p className="muted" style={{ marginTop: 8, maxWidth: 560 }}>
-              Auth works, the session is live, and your profile row exists. This is
-              the foundation. The systems engine and daily check-in land next.
+              Run the system. Energy is the metric that rules them all. Log the
+              day, hold the floor, and let the rest compound.
             </p>
+          </div>
+
+          <div className="hub-grid">
+            <Link href="/checkin" className="hub-card">
+              <div className="eyebrow">Daily check-in</div>
+              <div className="hub-title">Log today</div>
+              <p className="muted">
+                Energy, your systems, one line on the day. Under 5 minutes.
+              </p>
+              <span className="hub-cta">Open check-in &rarr;</span>
+            </Link>
+
+            <Link href="/systems" className="hub-card">
+              <div className="eyebrow">Systems engine</div>
+              <div className="hub-title">
+                {activeCount ?? 0} active{" "}
+                {activeCount === 1 ? "system" : "systems"}
+              </div>
+              <p className="muted">
+                Create, edit, archive. Each one needs a floor and a ceiling.
+              </p>
+              <span className="hub-cta">Manage systems &rarr;</span>
+            </Link>
           </div>
 
           <div className="card">
             <div className="eyebrow" style={{ marginBottom: 12 }}>
-              Your account
+              Last check-in
             </div>
-            <div className="kv">
-              <span className="k">Name</span>
-              <span>{profile?.name ?? "Not set yet"}</span>
-            </div>
-            <div className="kv">
-              <span className="k">Email</span>
-              <span>{profile?.email ?? user.email}</span>
-            </div>
-            <div className="kv">
-              <span className="k">Age</span>
-              <span>{profile?.age ?? "Not set yet"}</span>
-            </div>
-            <div className="kv">
-              <span className="k">Height</span>
-              <span>{profile?.height_cm ? `${profile.height_cm} cm` : "Not set yet"}</span>
-            </div>
-            <div className="kv">
-              <span className="k">Weight</span>
-              <span>{profile?.weight_kg ? `${profile.weight_kg} kg` : "Not set yet"}</span>
-            </div>
-            <div className="kv">
-              <span className="k">Activity level</span>
-              <span>{profile?.activity_level ?? "Not set yet"}</span>
-            </div>
+            {lastEntry ? (
+              <div className="stack" style={{ gap: 8 }}>
+                <div className="last-entry-row">
+                  <span className="muted">{prettyDate(lastEntry.date)}</span>
+                  <span className="energy-pill">
+                    Energy {lastEntry.energy_1_10 ?? "--"}/10
+                  </span>
+                </div>
+                {lastEntry.one_line ? (
+                  <p style={{ margin: 0 }}>{lastEntry.one_line}</p>
+                ) : (
+                  <p className="muted" style={{ margin: 0 }}>
+                    No note logged that day.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="muted" style={{ margin: 0 }}>
+                Nothing logged yet. Your first check-in starts the record.
+              </p>
+            )}
           </div>
-
-          <p className="muted" style={{ fontSize: 13 }}>
-            Profile stats get filled in Phase 3 (your seeded Big Five and the
-            calorie engine). For now, this confirms the database and security
-            are wired correctly.
-          </p>
         </div>
       </main>
     </div>
