@@ -1,0 +1,50 @@
+You are building a personal Life OS web app for me (Mark) and, later, one friend. It is a directive AI coach plus an editable systems engine, grounded in Scott Adams' philosophy. It is NOT a habit tracker. It teaches, plans, schedules, and coaches.
+
+THIS FOLDER ALREADY CONTAINS:
+- coach-knowledge/ : the coach's brain. Read ALL of these before building the coach: coach-persona.md, adams-doctrine.md, reframes-library.md, daily-wisdom.md, your-profile.md. your-profile.md is me; use it to seed my account and personalize defaults.
+- .env.local : already filled with my Supabase URL, Supabase publishable and secret keys, and a Gemini API key. Use these. Never print them back or commit them.
+
+STACK:
+- Next.js (App Router, TypeScript), deployable to Vercel. Responsive and an installable PWA (phone home screen and laptop, same synced data).
+- Supabase for Postgres, auth, and row-level security. Connection details are in .env.local.
+- Google Gemini (free Flash model) for the coach, called only from a server route so the key stays server-side. Put the AI call behind one module so the provider can be swapped later.
+
+NON-NEGOTIABLE RELIABILITY RULE:
+- Code does everything exact: calorie and macro math, the sleep-shift schedule, streaks, dates, time blocks, charts, Eisenhower sorting. Deterministic.
+- The AI only does judgment: coaching, daily and weekly review, reframes, next action. It READS exact numbers from the app and never computes or guesses them. If a number is missing, it says so.
+
+DATA MODEL (Supabase tables, with RLS):
+- users (id, name, email, age, height_cm, weight_kg, activity_level, constraints, coaching_prefs)
+- systems (id, user_id, name, domain, rule, floor, ceiling, metric_type, anchor, schedule_block, active). Full create/edit/archive/delete from the UI. Nothing hard-coded.
+- entries (id, user_id, date, energy_1_10, system_statuses jsonb, meals jsonb, one_line, reflection, tomorrow_next_action, is_private)
+- friendships (user_id, friend_id, status). RLS so two linked users see each other's non-private progress only.
+
+THE COACH:
+- Before each call, load the five coach-knowledge files as system context.
+- Persona: hardcore, directive, strategic, tight. Explains the why once, then gives orders. No filler, no emojis, no em dashes.
+- Daily review output: a 30-second read of the day, plus one correction for tomorrow, plus the next morning's plan. Short and structured.
+- Weekly review: which systems are automatic vs willpower-dependent, one to shrink/move/cut, energy-to-habit correlation, and the next step in the active campaign.
+
+MODULES:
+- Calorie/macro calculator (CODE, Mifflin-St Jeor). My stats: age 22, 188 cm, 88 kg, trains most days. Output maintenance (about 3,100 kcal), a lean-gain target (about 3,350), and a protein goal (about 170 g). Compare logged meals against target. The AI never computes these.
+- Fitness: a rotating menu of strength-endurance and power sessions for home and outdoors, scaled for an advanced trainee (ex-powerlifter, not beginner), a daily mobility warm-up slot (Adam Ondra style), and a left-ankle prehab block.
+- Diet: 5 to 10 default meals from Vienna groceries (Hofer, Billa, Spar), air-fryer-fast, protein-first, low added sugar, lactose-free. Meals in a tighter window (no fasting), front-loaded earlier in the day, last meal well before bed. Generate a weekly shopping list.
+- Personal Eisenhower matrix for life and new-venture ideas only (no work tasks). Q1 to Q4 sorted in code, protect Q2.
+- Reframe engine plus one daily gem from the knowledge files, attribution shown honestly.
+
+ACTIVE CAMPAIGN (seed mine to this):
+- "Sleep-shift plus morning routine."
+- Sleep-shift stepper (code): move my target wake and bed times earlier in 15 to 30 minute steps, advancing only when the current step holds for several days. Wake-time consistency leads.
+- Morning routine: sunlight within 30 minutes of waking, the mobility warm-up, a 90-minute block, then training.
+- Dinner stepper: move my dinner time earlier in steps, same logic.
+- Keep other systems in maintenance mode while a campaign is active.
+
+ONBOARDING WIZARD (for any new user, e.g. my friend):
+- Ask the intake (energy, schedule, vision, sleep, diet, fitness, constraints, coaching prefs, failure modes). The AI proposes a starting set of systems and a draft schedule from the answers. The user edits before saving.
+
+HOW TO PROCEED:
+1. First, read every file in coach-knowledge/ (and Build-Plan.md if present). Then summarize the app in 5 bullets and list your build phases. Do NOT write code yet. Wait for my "go."
+2. Then build phase by phase, in this order: (1) scaffold plus Supabase auth plus one working account; (2) editable systems engine plus daily check-in; (3) seed my Big Five from your-profile.md plus the grounded Gemini coach; (4) the sleep-shift plus morning-routine campaign (this is the usable ship point); (5) calorie calculator plus fitness and diet modules; (6) weekly review plus reframes plus daily gem plus personal Eisenhower; (7) second user plus shared progress plus onboarding wizard; (8) PWA polish plus Vercel deploy.
+3. After each phase, stop, tell me exactly how to test it, and wait for my confirmation before the next. Commit to git after each working phase.
+
+Start with step 1 now.
