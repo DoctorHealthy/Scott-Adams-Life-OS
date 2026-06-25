@@ -883,3 +883,19 @@ textarea {
 .statchip.none {
   color: var(--muted);
 }
+
+/* ---------- coach output ---------- */
+.coach-output {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+/* The coach uses bare headers (READ, CORRECTION, etc.). Lift them visually
+   without relying on markdown rendering. */
+.coach-output {
+  --coach-accent: var(--accent);
+}

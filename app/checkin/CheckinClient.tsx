@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addDays, localDateStr, prettyDate, STATUS_META } from "@/lib/constants";
 import type { System, SystemStatus } from "@/lib/types";
 import { saveEntry } from "./actions";
+import CoachReview from "@/components/CoachReview";
 
 const STATUSES: SystemStatus[] = ["done", "floor", "skip"];
 
@@ -35,6 +36,7 @@ export default function CheckinClient({
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [entryExists, setEntryExists] = useState(false);
 
   // Set the date on the client only, to avoid SSR/client hydration mismatch.
   useEffect(() => {
@@ -60,6 +62,7 @@ export default function CheckinClient({
       setReflection(data?.reflection ?? "");
       setNextAction(data?.tomorrow_next_action ?? "");
       setIsPrivate(data?.is_private ?? true);
+      setEntryExists(!!data);
       setDirty(false);
       setSaved(false);
       setLoading(false);
@@ -113,6 +116,7 @@ export default function CheckinClient({
     }
     setDirty(false);
     setSaved(true);
+    setEntryExists(true);
     // Refresh the client Router Cache so Home shows this check-in immediately.
     router.refresh();
   }
@@ -310,6 +314,17 @@ export default function CheckinClient({
                   : "Up to date."}
             </span>
           </div>
+
+          <CoachReview
+            key={date}
+            date={date}
+            enabled={entryExists && !dirty}
+            hint={
+              !entryExists
+                ? "Save your check-in first, then get the review."
+                : "Save your latest changes, then re-run the review."
+            }
+          />
         </>
       )}
     </div>
