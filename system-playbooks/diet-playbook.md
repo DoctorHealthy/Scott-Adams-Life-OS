@@ -26,9 +26,9 @@ At 22, 188 cm, 88 kg, training most days:
 
 The app recalculates these if your weight or activity changes. The coach reads these numbers, it never guesses them.
 
-## The eating window (no fasting)
+## The eating window
 
-Two to three real meals, spaced about 4 to 5 hours apart, front-loaded earlier in the day, last meal well before bed instead of 10pm. This ties straight into the sleep system: a late heavy dinner wrecks your sleep, so the window pulls dinner earlier as your wake time moves earlier.
+Most days, run a tighter window: two to three real meals, spaced about 4 to 5 hours apart, front-loaded earlier in the day, last meal well before bed instead of 10pm. This ties straight into the sleep system: a late heavy dinner wrecks your sleep, so the window pulls dinner earlier as your wake time moves earlier. If you want to fast some days, that's fine, just hit your calories on the days you eat.
 
 A normal day, roughly:
 

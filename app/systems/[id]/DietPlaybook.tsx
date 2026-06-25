@@ -298,7 +298,7 @@ export default function DietPlaybook({
       {/* EATING WINDOW */}
       <div className="card">
         <div className="eyebrow" style={{ marginBottom: 6 }}>
-          Eating window (no fasting)
+          Eating window
         </div>
         <p className="muted" style={{ marginTop: 0, fontSize: 14 }}>
           Two to three real meals, 4 to 5 hours apart, front-loaded, last meal well

@@ -49,7 +49,7 @@ Current intake:
 Preferences and rules:
 - Likes vegetables, fruit, meat, fish. Open to protein-first.
 - Lactose-free. Low added sugar (diabetes risk). Wants to avoid the sluggish feeling, which fits Adams' simple-carb cut.
-- Not doing intermittent fasting (it fights the muscle goal). Prefers meals closer together in a tighter window so he isn't eating all day, while still hitting his calories.
+- No rigid fasting rule. Prefers meals closer together in a tighter window most days so he isn't eating all day, but wants the option to fast on some days. On eating days he still needs to hit his calories.
 
 ### Calorie and macro estimate (to be finalized in-app once age is set)
 
@@ -61,9 +61,9 @@ Using Mifflin-St Jeor at age 22, 188 cm, 88 kg, male:
 
 The app computes this exactly in code from his stats and activity. The coach never recites these numbers from memory.
 
-### Eating window: meals closer together, not fasting (his decision)
+### Eating window: a tighter window most days, fasting optional
 
-He's dropped intermittent fasting because it fights the muscle goal. The approach instead: a tighter eating window so he isn't grazing from morning to midnight, while still hitting his calories. Two to three real meals spaced about 4 to 5 hours apart, front-loaded earlier in the day, last meal well before bed instead of at 10pm. He needs roughly 3,100 to 3,350 kcal and about 170 g of protein, so the meals are real food, not snacks. The coach keeps the window tight enough that eating isn't an all-day activity, but never lets it slide into under-eating that costs him weight.
+Default approach: a tighter eating window so he isn't grazing from morning to midnight, while still hitting his calories. Two to three real meals spaced about 4 to 5 hours apart, front-loaded earlier in the day, last meal well before bed instead of at 10pm. He wants the option to run a fasting day when he feels like it, so don't treat fasting as off-limits. On eating days, hit roughly 3,100 to 3,350 kcal and about 170 g of protein with real food, not snacks. The coach keeps eating from becoming an all-day activity, but never lets it slide into chronic under-eating that costs him weight.
 
 ## Fitness
 

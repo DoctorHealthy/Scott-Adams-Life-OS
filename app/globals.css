@@ -894,6 +894,12 @@ textarea {
   font-size: 15px;
 }
 
+/* Subtly lift the verdict (first line) without parsing the text. */
+.coach-output::first-line {
+  font-weight: 700;
+  color: var(--text);
+}
+
 /* The coach uses bare headers (READ, CORRECTION, etc.). Lift them visually
    without relying on markdown rendering. */
 .coach-output {
@@ -1056,6 +1062,7 @@ textarea {
 .window-name {
   font-size: 13px;
   color: var(--muted);
+  flex: 1 1 auto; /* fill the cell so all three time inputs line up at the bottom */
 }
 
 /* ---------- meal catalog (playbook) ---------- */
@@ -1629,5 +1636,46 @@ textarea {
 }
 
 .type-chip-x:hover {
+  color: #ff9a93;
+}
+
+/* ---------- editable lists (warm-up, ankle, session menu, future Mind/Schedule) ---------- */
+.edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-row input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.edit-x {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.edit-x:hover {
+  border-color: #5a2526;
   color: #ff9a93;
 }

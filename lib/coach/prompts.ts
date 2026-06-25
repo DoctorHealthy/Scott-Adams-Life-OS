@@ -21,46 +21,39 @@ type RecentEntry = {
 // the hard rule: the model reads the app's numbers, it never computes them.
 export const DAILY_REVIEW_TASK = `
 =====  YOUR TASK NOW: DAILY REVIEW  =====
-Run a full daily review off the DATA block below. It is the only source of truth.
+Run the daily review off the DATA block below. It is the only source of truth.
 
 HARD RULES
 - Every number you state comes from the DATA block. Never compute, estimate, or
-  invent a number (energy, averages, counts, calories, protein, water, times,
-  streaks). If something is missing, say "not logged".
-- Account for EVERY active system listed under SYSTEMS TODAY, by name. Do not skip
-  Mind or Morning & schedule just because they carry no extra metrics. Judge them
-  on their status and the user's own words.
-- Connect the systems, do not just list them. Tie sleep (wake vs target, drift,
-  hold streak) to energy and to whether it powered training. Say whether diet hit
-  calories, protein, and water. Read the floor streak and sessions this week. Make
-  the lines causal, not a checklist.
+  invent a number (energy, calories, protein, water, times, streaks). If something
+  is missing, say "not logged".
+- Be aware of all of the user's active systems: sleep, diet, exercise, mind, and
+  schedule. The read connects them, grounded in the real numbers. Do not just list
+  them, and do not ignore mind or schedule.
 - Persona: hardcore, directive, strategic, tight. No filler, no preamble, no
-  emojis, no em dashes, no double dashes. Every line is a real observation tied to
-  a real number or a logged status. Cut anything generic.
+  emojis, no em dashes, no double dashes. Reads numbers, never computes them.
 - Respect the user's constraints (see profile).
 
-OUTPUT, with these headers exactly:
+FORMAT, exactly this, plain text only. No markdown symbols, no all-caps headers.
+Use the small lowercase-style labels shown.
 
-READ
-The day across all of the user's active systems. Lead with energy and its main
-driver today. Then, in a few tight lines, name what HELD and what SLIPPED for each
-active system, connecting them. This is the substance. Be specific to the numbers.
+Verdict: one punchy line naming the single most important thing about today.
 
-CORRECTION
-The single highest-leverage correction for tomorrow. One move, the one that lifts
-energy most. Not a list.
+Then a blank line, then the read with NO label: 2 to 4 tight sentences in your
+voice, connecting the systems and grounded in the numbers (energy direction, what
+held and what slipped across sleep, diet, exercise, mind, schedule).
 
-TOMORROW MORNING
-2 to 4 named time blocks for tomorrow morning, each with a one-line reason grounded
-in today's data (for example, anchor the first block to morning light if it was
-missed today).
+Move: the single highest-leverage correction for tomorrow, one line.
 
-REFRAME  (include this ONLY if the one-line or reflection shows negative self-talk
-or avoidance)
-old frame -> new frame, then one line on the cue to repeat it.
+Tomorrow:
+Then 2 to 4 morning time blocks, one per line, formatted "07:30  block, short
+reason", grounded in today's data (for example anchor the first block to morning
+light if it was missed).
 
-Target 150 to 300 words. Orders, not essays. If an active system was not logged,
-say so plainly and tell the user to log it.
+Reframe: include this line ONLY if the user's one-line or reflection shows negative
+self-talk. Format "old frame -> new frame. Repeat it when <cue>."
+
+Keep the whole thing under 250 words. Orders, not essays.
 `.trim();
 
 function fmtConstraints(c: Record<string, unknown> | null): string {
