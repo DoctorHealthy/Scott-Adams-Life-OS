@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TopNav from "@/components/TopNav";
-import { prettyDate } from "@/lib/constants";
+import LastEntryCard from "./LastEntryCard";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -17,15 +17,19 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
-  const { count: activeCount } = await supabase
+  const { data: allSystems } = await supabase
     .from("systems")
-    .select("id", { count: "exact", head: true })
+    .select("id, name, domain, active")
     .eq("user_id", user.id)
-    .eq("active", true);
+    .order("sort_order", { ascending: true });
+
+  const activeCount = (allSystems ?? []).filter((s) => s.active).length;
 
   const { data: lastEntry } = await supabase
     .from("entries")
-    .select("date, energy_1_10, one_line")
+    .select(
+      "date, energy_1_10, one_line, reflection, tomorrow_next_action, system_statuses"
+    )
     .eq("user_id", user.id)
     .order("date", { ascending: false })
     .limit(1)
@@ -74,27 +78,10 @@ export default async function DashboardPage() {
             <div className="eyebrow" style={{ marginBottom: 12 }}>
               Last check-in
             </div>
-            {lastEntry ? (
-              <div className="stack" style={{ gap: 8 }}>
-                <div className="last-entry-row">
-                  <span className="muted">{prettyDate(lastEntry.date)}</span>
-                  <span className="energy-pill">
-                    Energy {lastEntry.energy_1_10 ?? "--"}/10
-                  </span>
-                </div>
-                {lastEntry.one_line ? (
-                  <p style={{ margin: 0 }}>{lastEntry.one_line}</p>
-                ) : (
-                  <p className="muted" style={{ margin: 0 }}>
-                    No note logged that day.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="muted" style={{ margin: 0 }}>
-                Nothing logged yet. Your first check-in starts the record.
-              </p>
-            )}
+            <LastEntryCard
+              entry={lastEntry ?? null}
+              systems={allSystems ?? []}
+            />
           </div>
         </div>
       </main>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { addDays, localDateStr, prettyDate, STATUS_META } from "@/lib/constants";
 import type { System, SystemStatus } from "@/lib/types";
@@ -17,6 +18,7 @@ export default function CheckinClient({
   userId: string;
 }) {
   const supabase = createClient();
+  const router = useRouter();
 
   const [today] = useState(() => localDateStr());
   const [date, setDate] = useState<string | null>(null);
@@ -111,6 +113,8 @@ export default function CheckinClient({
     }
     setDirty(false);
     setSaved(true);
+    // Refresh the client Router Cache so Home shows this check-in immediately.
+    router.refresh();
   }
 
   if (!date) {
@@ -290,7 +294,7 @@ export default function CheckinClient({
                 checked={isPrivate}
                 onChange={(e) => mark(setIsPrivate)(e.target.checked)}
               />
-              <span>Private (hidden from a linked friend)</span>
+              <span>Private. Only you can see this.</span>
             </label>
           </div>
 
