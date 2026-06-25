@@ -1,18 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { prettyDate, STATUS_META } from "@/lib/constants";
 import type { SystemStatus } from "@/lib/types";
 
-type SysMini = {
+export type SysMini = {
   id: string;
   name: string;
   domain: string | null;
   active: boolean;
 };
 
-type LastEntry = {
+export type EntryRow = {
   date: string;
   energy_1_10: number | null;
   one_line: string | null;
@@ -21,31 +20,38 @@ type LastEntry = {
   system_statuses: Record<string, SystemStatus>;
 };
 
-export default function LastEntryCard({
+function Field({
+  label,
+  value,
+  body,
+}: {
+  label: string;
+  value: string | null;
+  body?: boolean;
+}) {
+  return (
+    <div className="detail-block">
+      <div className="detail-label">{label}</div>
+      <div className={body ? "detail-body" : undefined}>
+        {value ? value : <span className="muted">Not logged.</span>}
+      </div>
+    </div>
+  );
+}
+
+export default function EntryCard({
   entry,
   systems,
 }: {
-  entry: LastEntry | null;
+  entry: EntryRow;
   systems: SysMini[];
 }) {
   const [open, setOpen] = useState(false);
 
-  if (!entry) {
-    return (
-      <p className="muted" style={{ margin: 0 }}>
-        Nothing logged yet. Your first{" "}
-        <Link href="/checkin" className="link">
-          check-in
-        </Link>{" "}
-        starts the record.
-      </p>
-    );
-  }
-
   const statuses = entry.system_statuses ?? {};
 
-  // Show every active system plus anything that was logged that day
-  // (covers systems archived or deleted after the entry was made).
+  // Every active system plus anything logged that day (so renamed, archived,
+  // or deleted systems still resolve to a sensible label).
   const ids = Array.from(
     new Set([
       ...systems.filter((s) => s.active).map((s) => s.id),
@@ -63,42 +69,38 @@ export default function LastEntryCard({
   });
 
   return (
-    <div>
+    <div className="entry-item">
       <button
-        className="entry-toggle"
+        className="entry-item-head"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        <span className="muted">{prettyDate(entry.date)}</span>
-        <span className="energy-pill">Energy {entry.energy_1_10 ?? "--"}/10</span>
-        {!open && entry.one_line ? (
-          <span className="entry-preview">{entry.one_line}</span>
+        <div className="entry-line1">
+          <span className="entry-date">{prettyDate(entry.date)}</span>
+          <span className="energy-pill">
+            Energy {entry.energy_1_10 ?? "--"}/10
+          </span>
+          <span className="entry-chevron">{open ? "Hide" : "Open"}</span>
+        </div>
+        {!open ? (
+          <div className="entry-oneline">
+            {entry.one_line ? (
+              entry.one_line
+            ) : (
+              <span className="muted">No one-line logged.</span>
+            )}
+          </div>
         ) : null}
-        <span className="entry-chevron">{open ? "Hide" : "Show full entry"}</span>
       </button>
 
       {open ? (
         <div className="entry-detail">
-          <div className="detail-block">
-            <div className="detail-label">One line</div>
-            <div>{entry.one_line || <span className="muted">Not logged.</span>}</div>
-          </div>
-
-          <div className="detail-block">
-            <div className="detail-label">Evening reflection</div>
-            <div className="detail-body">
-              {entry.reflection || <span className="muted">Not logged.</span>}
-            </div>
-          </div>
-
-          <div className="detail-block">
-            <div className="detail-label">Tomorrow&apos;s next action</div>
-            <div>
-              {entry.tomorrow_next_action || (
-                <span className="muted">Not logged.</span>
-              )}
-            </div>
-          </div>
+          <Field label="One line" value={entry.one_line} />
+          <Field label="Evening reflection" value={entry.reflection} body />
+          <Field
+            label="Tomorrow's next action"
+            value={entry.tomorrow_next_action}
+          />
 
           <div className="detail-block">
             <div className="detail-label">Systems</div>
