@@ -60,7 +60,7 @@ export default async function PlaybookPage({
 
           {isDiet ? (
             <DietPlaybook
-              targets={computeTargets(profile)}
+              computed={computeTargets(profile ?? null)}
               config={readDietConfig(profile?.coaching_prefs)}
             />
           ) : (

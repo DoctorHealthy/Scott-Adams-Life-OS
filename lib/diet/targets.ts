@@ -17,11 +17,12 @@ const ACTIVITY: Record<string, { mult: number; label: string }> = {
 };
 
 export type Targets = {
-  ok: boolean;
+  ok: boolean; // true when calorie targets are computable (age, height, weight set)
   bmr: number | null;
   maintenance: number | null;
   leanGain: number | null; // the default goal: gain muscle, not lose weight
   protein: number | null;
+  waterMl: number | null; // depends only on weight
   activityLabel: string;
   missing: string[];
 };
@@ -38,6 +39,10 @@ export function computeTargets(p: ProfileLike | null): Targets {
   if (p && p.height_cm == null) missing.push("height");
   if (p && p.weight_kg == null) missing.push("weight");
 
+  // Water depends only on bodyweight, so compute it whenever weight is known.
+  const waterMl =
+    p && p.weight_kg != null ? roundTo((p.weight_kg as number) * 35, 250) : null;
+
   if (missing.length || !p) {
     return {
       ok: false,
@@ -45,6 +50,7 @@ export function computeTargets(p: ProfileLike | null): Targets {
       maintenance: null,
       leanGain: null,
       protein: null,
+      waterMl,
       activityLabel: act.label,
       missing,
     };
@@ -66,6 +72,7 @@ export function computeTargets(p: ProfileLike | null): Targets {
     maintenance,
     leanGain,
     protein,
+    waterMl,
     activityLabel: act.label,
     missing: [],
   };

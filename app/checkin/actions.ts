@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { SystemStatus } from "@/lib/types";
+import type { DietLogValue } from "@/lib/diet/log";
 
 export type EntryInput = {
   date: string;
   energy_1_10: number | null;
   system_statuses: Record<string, SystemStatus>;
-  meals: string[];
+  meals: DietLogValue;
   one_line: string;
   reflection: string;
   tomorrow_next_action: string;

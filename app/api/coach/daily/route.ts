@@ -4,7 +4,8 @@ import { loadKnowledge } from "@/lib/coach/knowledge";
 import { generate, CoachBusyError } from "@/lib/ai/provider";
 import { buildDailyReviewPrompt, DAILY_REVIEW_TASK } from "@/lib/coach/prompts";
 import { computeTargets } from "@/lib/diet/targets";
-import { mealTotals } from "@/lib/diet/meals";
+import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
+import { readDietLog, logTotals } from "@/lib/diet/log";
 import type { Entry, System } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -69,11 +70,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const targets = computeTargets(profile ?? null);
-  const loggedMeals = Array.isArray((entry as Entry).meals)
-    ? ((entry as Entry).meals as string[])
-    : [];
-  const logged = mealTotals(loggedMeals);
+  const config = readDietConfig(profile?.coaching_prefs);
+  const eff = effectiveTargets(computeTargets(profile ?? null), config.targets);
+  const dietLog = readDietLog((entry as Entry).meals);
+  const logged = logTotals(dietLog.items);
 
   const prompt = buildDailyReviewPrompt({
     profile: profile ?? null,
@@ -82,12 +82,14 @@ export async function POST(request: Request) {
     recent: recent ?? [],
     date,
     diet: {
-      ok: targets.ok,
-      targetKcal: targets.leanGain,
-      targetProtein: targets.protein,
+      ok: eff.leanGain != null,
+      targetKcal: eff.leanGain,
+      targetProtein: eff.protein,
       loggedKcal: logged.kcal,
       loggedProtein: logged.protein,
-      mealCount: loggedMeals.length,
+      mealCount: dietLog.items.length,
+      waterMl: dietLog.waterMl,
+      waterTargetMl: eff.waterMl,
     },
   });
 

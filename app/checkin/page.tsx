@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import TopNav from "@/components/TopNav";
 import CheckinClient from "./CheckinClient";
 import { computeTargets } from "@/lib/diet/targets";
-import { readDietConfig } from "@/lib/diet/config";
+import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
+import type { DietMeal } from "@/lib/diet/meals";
 import type { System } from "@/lib/types";
 
 export default async function CheckinPage() {
@@ -24,8 +25,15 @@ export default async function CheckinPage() {
     supabase.from("users").select("*").eq("id", user.id).single(),
   ]);
 
-  const targets = computeTargets(profile ?? null);
-  const dietMenu = readDietConfig(profile?.coaching_prefs).menu;
+  const config = readDietConfig(profile?.coaching_prefs);
+  const targets = effectiveTargets(computeTargets(profile ?? null), config.targets);
+
+  // Log against the rotation if one is set, otherwise the whole catalog.
+  const byId = new Map(config.meals.map((m) => [m.id, m]));
+  const catalog: DietMeal[] =
+    config.menu.length > 0
+      ? config.menu.map((id) => byId.get(id)).filter((m): m is DietMeal => !!m)
+      : config.meals;
 
   return (
     <div className="shell">
@@ -35,7 +43,7 @@ export default async function CheckinPage() {
           systems={(systems as System[]) ?? []}
           userId={user.id}
           targets={targets}
-          dietMenu={dietMenu}
+          catalog={catalog}
         />
       </main>
     </div>

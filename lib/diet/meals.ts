@@ -1,19 +1,25 @@
-// The default meal menu, straight from system-playbooks/diet-playbook.md.
-// Macros are approximate per the playbook; the app totals exact sums from these.
-// All lactose-free, low added sugar, air-fryer fast.
+// The meal catalog. The defaults below seed a user's catalog; after that the
+// catalog is user data (add / edit / remove), stored in coaching_prefs.diet.
+// Macros are numbers; all totals are summed in code, never by the AI.
 
-export type Section = "Protein" | "Carbs" | "Veg & fruit" | "Fats & extras";
+export type Section =
+  | "Protein"
+  | "Carbs"
+  | "Veg & fruit"
+  | "Fats & extras"
+  | "Other";
 
 export type Ingredient = { item: string; section: Section };
 
-export type Meal = {
+export type DietMeal = {
   id: string;
   name: string;
   kcal: number;
   protein: number;
-  blurb: string;
-  prep: string;
+  blurb?: string;
+  prep?: string;
   ingredients: Ingredient[];
+  custom?: boolean;
 };
 
 export const SECTIONS: Section[] = [
@@ -21,15 +27,16 @@ export const SECTIONS: Section[] = [
   "Carbs",
   "Veg & fruit",
   "Fats & extras",
+  "Other",
 ];
 
-export const MEALS: Meal[] = [
+export const DEFAULT_MEALS: DietMeal[] = [
   {
     id: "chicken-sweetpotato-broccoli",
     name: "Air-fryer chicken thighs + sweet potato + broccoli",
     kcal: 700,
     protein: 50,
-    blurb: "Big highest-protein meal. Your default Meal 1.",
+    blurb: "Big, highest-protein meal. Your default Meal 1.",
     prep: "Chicken and cubed sweet potato in the air fryer. Frozen broccoli steamed. Olive oil, salt, paprika.",
     ingredients: [
       { item: "Chicken thighs", section: "Protein" },
@@ -91,7 +98,7 @@ export const MEALS: Meal[] = [
     kcal: 520,
     protein: 35,
     blurb: "Fast, gut-friendly, low sugar if you skip the sweetened kinds.",
-    prep: "Stir oats into a high-protein lactose-free yogurt (Hofer and Billa both carry one). Top with berries and nuts.",
+    prep: "Stir oats into a high-protein lactose-free yogurt. Top with berries and nuts.",
     ingredients: [
       { item: "Lactose-free high-protein yogurt", section: "Protein" },
       { item: "Rolled oats", section: "Carbs" },
@@ -144,30 +151,20 @@ export const MEALS: Meal[] = [
   },
 ];
 
-export function mealById(id: string): Meal | undefined {
-  return MEALS.find((m) => m.id === id);
+export function mealById(meals: DietMeal[], id: string): DietMeal | undefined {
+  return meals.find((m) => m.id === id);
 }
 
-export function mealTotals(ids: string[]): { kcal: number; protein: number } {
-  let kcal = 0;
-  let protein = 0;
-  for (const id of ids) {
-    const m = mealById(id);
-    if (m) {
-      kcal += m.kcal;
-      protein += m.protein;
-    }
-  }
-  return { kcal, protein };
-}
-
-export function buildShoppingList(ids: string[]): { section: Section; items: string[] }[] {
+// Shopping list from a set of meals, grouped by aisle, deduped, sorted.
+export function buildShoppingList(
+  meals: DietMeal[]
+): { section: Section; items: string[] }[] {
   const map = new Map<Section, Set<string>>();
   for (const s of SECTIONS) map.set(s, new Set());
-  for (const id of ids) {
-    const m = mealById(id);
-    if (!m) continue;
-    for (const ing of m.ingredients) map.get(ing.section)?.add(ing.item);
+  for (const m of meals) {
+    for (const ing of m.ingredients ?? []) {
+      map.get(ing.section)?.add(ing.item);
+    }
   }
   return SECTIONS.map((section) => ({
     section,

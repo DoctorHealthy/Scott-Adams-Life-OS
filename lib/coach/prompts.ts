@@ -68,6 +68,8 @@ type DietNumbers = {
   loggedKcal: number;
   loggedProtein: number;
   mealCount: number;
+  waterMl: number;
+  waterTargetMl: number | null;
 };
 
 export function buildDailyReviewPrompt(args: {
@@ -142,8 +144,9 @@ ${
 - Protein logged: ${diet.loggedProtein} g of ${diet.targetProtein ?? "not set"} g target (${
         diet.targetProtein != null ? diet.targetProtein - diet.loggedProtein : "?"
       } g under)
-- Meals logged: ${diet.mealCount}`
-    : "- Targets not computable (profile stats missing). Do not guess them."
+- Meals and snacks logged: ${diet.mealCount}
+- Water: ${diet.waterMl} ml of ${diet.waterTargetMl ?? "not set"} ml target`
+    : `- Calorie targets not computable (profile stats missing). Water: ${diet.waterMl} ml of ${diet.waterTargetMl ?? "not set"} ml. Do not guess the calorie numbers.`
 }
 
 THE USER'S OWN WORDS TODAY

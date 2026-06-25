@@ -9,7 +9,9 @@ import type { System, SystemStatus } from "@/lib/types";
 import { saveEntry } from "./actions";
 import CoachReview from "@/components/CoachReview";
 import DietLog from "@/components/DietLog";
-import type { Targets } from "@/lib/diet/targets";
+import type { DietMeal } from "@/lib/diet/meals";
+import type { EffectiveTargets } from "@/lib/diet/config";
+import { readDietLog, emptyDietLog, type DietLogValue } from "@/lib/diet/log";
 
 const STATUSES: SystemStatus[] = ["done", "floor", "skip"];
 
@@ -17,12 +19,12 @@ export default function CheckinClient({
   systems,
   userId,
   targets,
-  dietMenu,
+  catalog,
 }: {
   systems: System[];
   userId: string;
-  targets: Targets;
-  dietMenu: string[];
+  targets: EffectiveTargets;
+  catalog: DietMeal[];
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -32,7 +34,7 @@ export default function CheckinClient({
 
   const [energy, setEnergy] = useState<number | null>(null);
   const [statuses, setStatuses] = useState<Record<string, SystemStatus>>({});
-  const [meals, setMeals] = useState<string[]>([]);
+  const [dietLog, setDietLog] = useState<DietLogValue>(emptyDietLog());
   const [oneLine, setOneLine] = useState("");
   const [reflection, setReflection] = useState("");
   const [nextAction, setNextAction] = useState("");
@@ -65,7 +67,7 @@ export default function CheckinClient({
 
       setEnergy(data?.energy_1_10 ?? null);
       setStatuses((data?.system_statuses as Record<string, SystemStatus>) ?? {});
-      setMeals(Array.isArray(data?.meals) ? (data.meals as string[]) : []);
+      setDietLog(readDietLog(data?.meals));
       setOneLine(data?.one_line ?? "");
       setReflection(data?.reflection ?? "");
       setNextAction(data?.tomorrow_next_action ?? "");
@@ -112,7 +114,7 @@ export default function CheckinClient({
       date,
       energy_1_10: energy,
       system_statuses: statuses,
-      meals,
+      meals: dietLog,
       one_line: oneLine,
       reflection,
       tomorrow_next_action: nextAction,
@@ -283,9 +285,9 @@ export default function CheckinClient({
               </Link>
             </div>
             <DietLog
-              menuIds={dietMenu}
-              value={meals}
-              onChange={(ids) => mark(setMeals)(ids)}
+              catalog={catalog}
+              value={dietLog}
+              onChange={(v) => mark(setDietLog)(v)}
               targets={targets}
             />
           </div>
