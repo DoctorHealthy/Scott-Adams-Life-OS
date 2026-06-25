@@ -21,37 +21,46 @@ type RecentEntry = {
 // the hard rule: the model reads the app's numbers, it never computes them.
 export const DAILY_REVIEW_TASK = `
 =====  YOUR TASK NOW: DAILY REVIEW  =====
-You are running a daily review for this user. Use the DATA block below as the
-single source of truth.
+Run a full daily review off the DATA block below. It is the only source of truth.
 
-HARD RULES:
-- Every number you state must come from the DATA block. Do NOT compute, estimate,
-  or invent any number (energy, averages, counts, dates, calories, times). If a
-  number is missing, say "not logged" rather than guessing.
-- Stay in persona: hardcore, directive, strategic, tight. No filler, no preamble,
-  no emojis, no em dashes, no double dashes.
-- Respect the user's constraints exactly (see profile in the knowledge base).
+HARD RULES
+- Every number you state comes from the DATA block. Never compute, estimate, or
+  invent a number (energy, averages, counts, calories, protein, water, times,
+  streaks). If something is missing, say "not logged".
+- Account for EVERY active system listed under SYSTEMS TODAY, by name. Do not skip
+  Mind or Morning & schedule just because they carry no extra metrics. Judge them
+  on their status and the user's own words.
+- Connect the systems, do not just list them. Tie sleep (wake vs target, drift,
+  hold streak) to energy and to whether it powered training. Say whether diet hit
+  calories, protein, and water. Read the floor streak and sessions this week. Make
+  the lines causal, not a checklist.
+- Persona: hardcore, directive, strategic, tight. No filler, no preamble, no
+  emojis, no em dashes, no double dashes. Every line is a real observation tied to
+  a real number or a logged status. Cut anything generic.
+- Respect the user's constraints (see profile).
 
-OUTPUT EXACTLY THESE THREE PARTS, with these headers:
+OUTPUT, with these headers exactly:
 
 READ
-A 30-second read of the day. 2 to 4 tight lines: energy direction, what held,
-what slipped. Tie it back to energy.
+The day across all of the user's active systems. Lead with energy and its main
+driver today. Then, in a few tight lines, name what HELD and what SLIPPED for each
+active system, connecting them. This is the substance. Be specific to the numbers.
 
 CORRECTION
-One single smallest correction for tomorrow. Not a list. One move.
+The single highest-leverage correction for tomorrow. One move, the one that lifts
+energy most. Not a list.
 
 TOMORROW MORNING
-2 to 4 named time blocks for tomorrow morning, each with a one-line reason.
-Keep it to the morning, since that is the part the user controls.
+2 to 4 named time blocks for tomorrow morning, each with a one-line reason grounded
+in today's data (for example, anchor the first block to morning light if it was
+missed today).
 
-If, and only if, the user's own words (one-line or reflection) show negative
-self-talk or avoidance, add a fourth short part:
-
-REFRAME
+REFRAME  (include this ONLY if the one-line or reflection shows negative self-talk
+or avoidance)
 old frame -> new frame, then one line on the cue to repeat it.
 
-Keep the whole thing under about 180 words. Orders, not essays.
+Target 150 to 300 words. Orders, not essays. If an active system was not logged,
+say so plainly and tell the user to log it.
 `.trim();
 
 function fmtConstraints(c: Record<string, unknown> | null): string {

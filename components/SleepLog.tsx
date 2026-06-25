@@ -42,16 +42,16 @@ export default function SleepLogCard({
       </div>
       <div className="toggle-list">
         <ToggleRow
-          label="Wind-down done"
-          hint="dim, prep tomorrow, read"
-          on={value.windDown}
-          onClick={() => set("windDown", !value.windDown)}
-        />
-        <ToggleRow
           label="Morning light done"
           hint="outside within 30 to 60 min of waking"
           on={value.morningLight}
           onClick={() => set("morningLight", !value.morningLight)}
+        />
+        <ToggleRow
+          label="Wind-down done"
+          hint="dim, prep tomorrow, read"
+          on={value.windDown}
+          onClick={() => set("windDown", !value.windDown)}
         />
       </div>
     </div>

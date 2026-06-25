@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { localDateStr } from "@/lib/constants";
 import {
   computeExerciseStats,
@@ -9,26 +9,6 @@ import {
   type SessionType,
 } from "@/lib/exercise/exercise";
 import { saveExerciseConfig } from "@/app/exercise/actions";
-
-const WARMUP = [
-  "Light cardio, 2 to 3 min (jog in place, jumping jacks, skipping).",
-  "Joint circles: ankles, knees, hips, shoulders, wrists.",
-  "Dynamic stretches: leg swings, walking lunges with torso rotation, arm swings.",
-  "Scapular activation: band pull-aparts or scap push-ups.",
-  "Hip openers: 90/90 transitions, a deep squat hold.",
-  "Finger and forearm prep: open-close the hands, wrist circles, light hangs.",
-  "A set of push-ups to fire up the antagonists.",
-];
-
-const ANKLE = [
-  "Calf raises, straight knee: 3 x 15 to 20.",
-  "Calf raises, bent knee (soleus): 3 x 15 to 20.",
-  "Eccentric heel drops off a step: 3 x 10 to 15, slow lower.",
-  "Banded ankle, all four directions: 2 to 3 x 15 each.",
-  "Tibialis raises (toes up against a wall): 3 x 20.",
-  "Single-leg balance: 3 x 30 to 45 s, progress to eyes closed.",
-  "Knee-to-wall ankle mobility: 3 x 10 per side.",
-];
 
 const STRUCTURE = [
   {
@@ -45,6 +25,69 @@ const STRUCTURE = [
   },
 ];
 
+function EditableList({
+  items,
+  placeholder,
+  onChange,
+  onCommit,
+}: {
+  items: string[];
+  placeholder: string;
+  onChange: (items: string[]) => void;
+  onCommit: () => void;
+}) {
+  const [adding, setAdding] = useState("");
+
+  function doAdd() {
+    const v = adding.trim();
+    if (!v) return;
+    onChange([...items, v]);
+    onCommit();
+    setAdding("");
+  }
+
+  return (
+    <div className="edit-list">
+      {items.map((it, i) => (
+        <div className="edit-row" key={i}>
+          <input
+            value={it}
+            onChange={(e) => {
+              const next = [...items];
+              next[i] = e.target.value;
+              onChange(next);
+            }}
+            onBlur={onCommit}
+          />
+          <button
+            className="edit-x"
+            aria-label="Remove"
+            onClick={() => {
+              onChange(items.filter((_, j) => j !== i));
+              onCommit();
+            }}
+          >
+            &times;
+          </button>
+        </div>
+      ))}
+      <div className="edit-row">
+        <input
+          placeholder={placeholder}
+          value={adding}
+          onChange={(e) => setAdding(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") doAdd();
+          }}
+        />
+        <button className="btn btn-auto" onClick={doAdd} disabled={!adding.trim()}>
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ExercisePlaybook({
   config,
   recent,
@@ -53,6 +96,7 @@ export default function ExercisePlaybook({
   recent: { date: string; log: ExerciseLog }[];
 }) {
   const [cfg, setCfg] = useState<ExerciseConfig>(config);
+  const cfgRef = useRef<ExerciseConfig>(config);
   const [newType, setNewType] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -60,37 +104,30 @@ export default function ExercisePlaybook({
 
   const today = localDateStr();
   const stats = computeExerciseStats(cfg, recent, today);
+  const sessionsOk = stats.sessionsLast7 >= stats.sessionsTarget;
 
-  async function persist(next: ExerciseConfig, message: string) {
+  function update(next: ExerciseConfig) {
+    cfgRef.current = next;
     setCfg(next);
+  }
+
+  async function commit(message: string) {
     setSaving(true);
     setError(null);
-    const res = await saveExerciseConfig(next);
+    const res = await saveExerciseConfig(cfgRef.current);
     setSaving(false);
     if ("error" in res) setError(res.error);
     else setMsg(message);
-  }
-
-  function setTarget(n: number) {
-    persist({ ...cfg, sessionsTarget: n }, "Weekly target saved.");
   }
 
   function addType() {
     const label = newType.trim();
     if (!label) return;
     const t: SessionType = { id: `custom-${crypto.randomUUID()}`, label };
+    update({ ...cfgRef.current, sessionTypes: [...cfgRef.current.sessionTypes, t] });
+    commit("Session menu saved.");
     setNewType("");
-    persist({ ...cfg, sessionTypes: [...cfg.sessionTypes, t] }, "Session type added.");
   }
-
-  function removeType(id: string) {
-    persist(
-      { ...cfg, sessionTypes: cfg.sessionTypes.filter((t) => t.id !== id) },
-      "Session type removed."
-    );
-  }
-
-  const sessionsOk = stats.sessionsLast7 >= stats.sessionsTarget;
 
   return (
     <div className="stack">
@@ -119,7 +156,7 @@ export default function ExercisePlaybook({
         </p>
       </div>
 
-      {/* Config */}
+      {/* Setup */}
       <div className="card">
         <div className="eyebrow" style={{ marginBottom: 10 }}>
           Setup
@@ -128,48 +165,65 @@ export default function ExercisePlaybook({
           <label>Sessions a week target</label>
           <select
             value={cfg.sessionsTarget}
-            onChange={(e) => setTarget(Number(e.target.value))}
+            onChange={(e) => {
+              update({ ...cfgRef.current, sessionsTarget: Number(e.target.value) });
+              commit("Weekly target saved.");
+            }}
             disabled={saving}
           >
-            <option value={3}>3 a week</option>
-            <option value={4}>4 a week</option>
-            <option value={5}>5 a week</option>
+            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+              <option key={n} value={n}>
+                {n} a week
+              </option>
+            ))}
           </select>
         </div>
+
         <div className="field">
-          <label>Session menu</label>
-          <div className="type-chips">
-            {cfg.sessionTypes.map((t) => {
-              const custom = t.id.startsWith("custom-");
-              return (
-                <span className="type-chip" key={t.id}>
-                  {t.label}
-                  {custom ? (
-                    <button
-                      className="type-chip-x"
-                      onClick={() => removeType(t.id)}
-                      aria-label={`Remove ${t.label}`}
-                    >
-                      &times;
-                    </button>
-                  ) : null}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-        <div className="form-row">
-          <div className="field">
-            <input
-              placeholder="Add a session type (e.g. Swim)"
-              value={newType}
-              onChange={(e) => setNewType(e.target.value)}
-            />
-          </div>
-          <div className="field" style={{ justifyContent: "flex-end" }}>
-            <button className="btn btn-auto" onClick={addType} disabled={!newType.trim() || saving}>
-              Add type
-            </button>
+          <label>Session menu (edit, remove, or add types)</label>
+          <div className="edit-list">
+            {cfg.sessionTypes.map((t, i) => (
+              <div className="edit-row" key={t.id}>
+                <input
+                  value={t.label}
+                  onChange={(e) => {
+                    const next = cfgRef.current.sessionTypes.map((x, j) =>
+                      j === i ? { ...x, label: e.target.value } : x
+                    );
+                    update({ ...cfgRef.current, sessionTypes: next });
+                  }}
+                  onBlur={() => commit("Session menu saved.")}
+                />
+                <button
+                  className="edit-x"
+                  aria-label="Remove"
+                  onClick={() => {
+                    update({
+                      ...cfgRef.current,
+                      sessionTypes: cfgRef.current.sessionTypes.filter(
+                        (_, j) => j !== i
+                      ),
+                    });
+                    commit("Session menu saved.");
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+            <div className="edit-row">
+              <input
+                placeholder="Add a session type (e.g. Swim)"
+                value={newType}
+                onChange={(e) => setNewType(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addType();
+                }}
+              />
+              <button className="btn btn-auto" onClick={addType} disabled={!newType.trim()}>
+                Add
+              </button>
+            </div>
           </div>
         </div>
         {error ? (
@@ -190,16 +244,17 @@ export default function ExercisePlaybook({
         </p>
       </div>
 
-      {/* Daily warm-up */}
+      {/* Daily warm-up (editable) */}
       <div className="card">
         <div className="eyebrow" style={{ marginBottom: 10 }}>
-          Daily Ondra-style warm-up (10 to 15 min)
+          Daily Ondra-style warm-up (edit your own)
         </div>
-        <ol className="checklist">
-          {WARMUP.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ol>
+        <EditableList
+          items={cfg.warmup}
+          placeholder="Add a warm-up move"
+          onChange={(items) => update({ ...cfgRef.current, warmup: items })}
+          onCommit={() => commit("Warm-up saved.")}
+        />
       </div>
 
       {/* Weekly structure */}
@@ -217,17 +272,18 @@ export default function ExercisePlaybook({
         </div>
       </div>
 
-      {/* Ankle */}
+      {/* Ankle (editable) */}
       <div className="card">
         <div className="eyebrow" style={{ marginBottom: 10 }}>
-          Left-ankle prehab (3 to 4 a week, 8 to 10 min)
+          Left-ankle prehab (edit your own)
         </div>
-        <ol className="checklist">
-          {ANKLE.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ol>
-        <p className="muted" style={{ marginBottom: 0, fontSize: 13 }}>
+        <EditableList
+          items={cfg.ankle}
+          placeholder="Add an ankle exercise"
+          onChange={(items) => update({ ...cfgRef.current, ankle: items })}
+          onCommit={() => commit("Ankle routine saved.")}
+        />
+        <p className="muted" style={{ marginBottom: 0, marginTop: 8, fontSize: 13 }}>
           Normal soreness is fine. Sharp or lingering pain means back off and see
           a physio. General guidance, not treatment.
         </p>

@@ -17,6 +17,7 @@ import { readDietLog, emptyDietLog, type DietLogValue } from "@/lib/diet/log";
 import {
   readSleepLog,
   emptySleepLog,
+  targetBedtime,
   type SleepConfig,
   type SleepLog,
 } from "@/lib/sleep/sleep";
@@ -67,6 +68,11 @@ export default function CheckinClient({
   const [error, setError] = useState<string | null>(null);
   const [entryExists, setEntryExists] = useState(false);
 
+  // Stable primitives for the sleep defaults (avoid putting the config object
+  // in loadEntry's deps, which would re-run the loader every render).
+  const defaultWake = sleepConfig.currentWake;
+  const defaultBed = targetBedtime(sleepConfig);
+
   // Set the date on the client only, to avoid SSR/client hydration mismatch.
   useEffect(() => {
     setDate((d) => d ?? localDateStr());
@@ -92,7 +98,14 @@ export default function CheckinClient({
         sleep?: unknown;
         exercise?: unknown;
       };
-      setSleepLog(readSleepLog(ml.sleep));
+      // Pre-fill wake/bed with the target times so they are not typed from
+      // scratch each day. Editable; the saved value is whatever shows here.
+      const sl = readSleepLog(ml.sleep);
+      setSleepLog({
+        ...sl,
+        wake: sl.wake ?? defaultWake,
+        bed: sl.bed ?? defaultBed,
+      });
       setExerciseLog(readExerciseLog(ml.exercise));
       setOneLine(data?.one_line ?? "");
       setReflection(data?.reflection ?? "");
@@ -103,7 +116,7 @@ export default function CheckinClient({
       setSaved(false);
       setLoading(false);
     },
-    [supabase, userId]
+    [supabase, userId, defaultWake, defaultBed]
   );
 
   useEffect(() => {
