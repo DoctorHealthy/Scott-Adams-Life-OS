@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { loadKnowledge } from "@/lib/coach/knowledge";
-import { generate } from "@/lib/ai/provider";
+import { generate, CoachBusyError } from "@/lib/ai/provider";
 import { buildDailyReviewPrompt, DAILY_REVIEW_TASK } from "@/lib/coach/prompts";
 import type { Entry, System } from "@/lib/types";
 
@@ -79,6 +79,12 @@ export async function POST(request: Request) {
     const text = await generate({ system, prompt, temperature: 0.6 });
     return NextResponse.json({ text });
   } catch (e) {
+    if (e instanceof CoachBusyError) {
+      return NextResponse.json(
+        { error: "Coach is busy right now. Tap to retry.", busy: true },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
 }

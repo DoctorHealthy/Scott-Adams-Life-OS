@@ -115,6 +115,29 @@ export async function setSystemActive(
   return { ok: true };
 }
 
+export async function reorderSystems(
+  orderedIds: string[]
+): Promise<ActionResult> {
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Not authenticated." };
+
+  // Set sort_order to match the given order. Scoped to the user via the eq +
+  // RLS, so a stray id can never touch another user's rows.
+  for (let i = 0; i < orderedIds.length; i++) {
+    const { error } = await supabase
+      .from("systems")
+      .update({ sort_order: i })
+      .eq("id", orderedIds[i])
+      .eq("user_id", user.id);
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/systems");
+  revalidatePath("/checkin");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function deleteSystem(id: string): Promise<ActionResult> {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Not authenticated." };

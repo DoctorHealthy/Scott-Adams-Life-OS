@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { prettyDate, STATUS_META } from "@/lib/constants";
 import type { SystemStatus } from "@/lib/types";
+import { deleteEntry } from "@/app/checkin/actions";
 
 export type SysMini = {
   id: string;
@@ -46,7 +48,26 @@ export default function EntryCard({
   entry: EntryRow;
   systems: SysMini[];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function remove() {
+    if (
+      !window.confirm(
+        `Delete the check-in for ${prettyDate(entry.date)}? This removes that day's row and cannot be undone.`
+      )
+    )
+      return;
+    setDeleting(true);
+    const res = await deleteEntry(entry.date);
+    setDeleting(false);
+    if ("error" in res) {
+      window.alert(`Could not delete: ${res.error}`);
+      return;
+    }
+    router.refresh();
+  }
 
   const statuses = entry.system_statuses ?? {};
 
@@ -70,28 +91,38 @@ export default function EntryCard({
 
   return (
     <div className="entry-item">
-      <button
-        className="entry-item-head"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-      >
-        <div className="entry-line1">
-          <span className="entry-date">{prettyDate(entry.date)}</span>
-          <span className="energy-pill">
-            Energy {entry.energy_1_10 ?? "--"}/10
-          </span>
-          <span className="entry-chevron">{open ? "Hide" : "Open"}</span>
-        </div>
-        {!open ? (
-          <div className="entry-oneline">
-            {entry.one_line ? (
-              entry.one_line
-            ) : (
-              <span className="muted">No one-line logged.</span>
-            )}
+      <div className="entry-item-top">
+        <button
+          className="entry-item-head"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+        >
+          <div className="entry-line1">
+            <span className="entry-date">{prettyDate(entry.date)}</span>
+            <span className="energy-pill">
+              Energy {entry.energy_1_10 ?? "--"}/10
+            </span>
+            <span className="entry-chevron">{open ? "Hide" : "Open"}</span>
           </div>
-        ) : null}
-      </button>
+          {!open ? (
+            <div className="entry-oneline">
+              {entry.one_line ? (
+                entry.one_line
+              ) : (
+                <span className="muted">No one-line logged.</span>
+              )}
+            </div>
+          ) : null}
+        </button>
+        <button
+          className="entry-del"
+          onClick={remove}
+          disabled={deleting}
+          title="Delete this check-in"
+        >
+          {deleting ? "..." : "Delete"}
+        </button>
+      </div>
 
       {open ? (
         <div className="entry-detail">

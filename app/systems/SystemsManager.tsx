@@ -9,6 +9,7 @@ import {
   updateSystem,
   setSystemActive,
   deleteSystem,
+  reorderSystems,
   type SystemInput,
 } from "./actions";
 
@@ -40,9 +41,25 @@ export default function SystemsManager({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   const active = initialSystems.filter((s) => s.active);
   const archived = initialSystems.filter((s) => !s.active);
+
+  async function move(index: number, dir: "up" | "down") {
+    const ids = active.map((s) => s.id);
+    const j = dir === "up" ? index - 1 : index + 1;
+    if (j < 0 || j >= ids.length) return;
+    [ids[index], ids[j]] = [ids[j], ids[index]];
+    setReordering(true);
+    const res = await reorderSystems(ids);
+    setReordering(false);
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
+    router.refresh();
+  }
 
   function openCreate() {
     setEditingId(null);
@@ -107,7 +124,8 @@ export default function SystemsManager({
     router.refresh();
   }
 
-  function card(s: System) {
+  function card(s: System, index?: number, total?: number) {
+    const sortable = index !== undefined && total !== undefined;
     return (
       <div className="system-card" key={s.id}>
         <div className="system-head">
@@ -115,6 +133,28 @@ export default function SystemsManager({
             {s.domain ?? "Custom"}
           </span>
           <span className="badge badge-soft">{metricLabel(s.metric_type)}</span>
+          {sortable ? (
+            <div className="sort-arrows">
+              <button
+                className="sort-arrow"
+                onClick={() => move(index, "up")}
+                disabled={reordering || index === 0}
+                title="Move up"
+                aria-label="Move up"
+              >
+                &uarr;
+              </button>
+              <button
+                className="sort-arrow"
+                onClick={() => move(index, "down")}
+                disabled={reordering || index === (total ?? 1) - 1}
+                title="Move down"
+                aria-label="Move down"
+              >
+                &darr;
+              </button>
+            </div>
+          ) : null}
         </div>
         <div className="system-name">{s.name}</div>
         {s.rule ? <div className="system-rule">{s.rule}</div> : null}
@@ -187,7 +227,7 @@ export default function SystemsManager({
 
       {active.length === 0 && archived.length === 0 ? (
         <div className="card empty">
-          <p>No systems yet. Build your first one, or wait for Phase 3 to seed your Big Five.</p>
+          <p>No systems yet. Build your first one.</p>
           <button className="btn btn-primary btn-auto" onClick={openCreate}>
             New system
           </button>
@@ -196,15 +236,19 @@ export default function SystemsManager({
 
       {active.length > 0 ? (
         <div>
-          <div className="section-label">Active</div>
-          <div className="system-grid">{active.map(card)}</div>
+          <div className="section-label">
+            Active <span className="muted">- arrows set the order on the check-in</span>
+          </div>
+          <div className="system-grid">
+            {active.map((s, i) => card(s, i, active.length))}
+          </div>
         </div>
       ) : null}
 
       {archived.length > 0 ? (
         <div>
           <div className="section-label">Archived</div>
-          <div className="system-grid">{archived.map(card)}</div>
+          <div className="system-grid">{archived.map((s) => card(s))}</div>
         </div>
       ) : null}
 

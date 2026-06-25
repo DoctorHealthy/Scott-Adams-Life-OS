@@ -49,7 +49,20 @@ const PROFILE = {
   },
 };
 
-// ---- The Big Five seed, ordered sleep-first per the active campaign ----
+// Canonical display order: Sleep, Schedule/Morning, Mind, Diet, Exercise.
+// sort_order is set from this, independent of the array order below.
+const ORDER = [
+  "Wake at target time",
+  "Wind-down read",
+  "Protect the morning block",
+  "Intention and reflection",
+  "Protein-first, tight window",
+  "Ondra morning warm-up",
+  "Training session",
+  "Left-ankle prehab",
+];
+
+// ---- The Big Five seed ----
 const SYSTEMS = [
   {
     name: "Wake at target time",
@@ -180,11 +193,15 @@ async function main() {
     process.exit(1);
   }
   const have = new Set((existing ?? []).map((s) => s.name));
-  const rows = SYSTEMS.filter((s) => !have.has(s.name)).map((s, i) => ({
+  const orderOf = (name) => {
+    const i = ORDER.indexOf(name);
+    return i === -1 ? ORDER.length : i;
+  };
+  const rows = SYSTEMS.filter((s) => !have.has(s.name)).map((s) => ({
     ...s,
     user_id: user.id,
     active: true,
-    sort_order: i,
+    sort_order: orderOf(s.name),
   }));
 
   if (rows.length === 0) {
@@ -197,6 +214,21 @@ async function main() {
     }
     console.log(`Inserted ${rows.length} systems.`);
   }
+
+  // Reconcile sort_order on the canonical Big Five so the order is correct
+  // even on accounts seeded before this order was set.
+  for (let i = 0; i < ORDER.length; i++) {
+    const { error: oErr } = await admin
+      .from("systems")
+      .update({ sort_order: i })
+      .eq("user_id", user.id)
+      .eq("name", ORDER[i]);
+    if (oErr) {
+      console.error(`Could not set order for "${ORDER[i]}":`, oErr.message);
+      process.exit(1);
+    }
+  }
+  console.log("Order reconciled (Sleep, Schedule/Morning, Mind, Diet, Exercise).");
   console.log("Seed complete.");
 }
 

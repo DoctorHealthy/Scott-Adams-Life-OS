@@ -55,5 +55,27 @@ export async function saveEntry(input: EntryInput): Promise<ActionResult> {
   if (error) return { error: error.message };
   revalidatePath("/checkin");
   revalidatePath("/dashboard");
+  revalidatePath("/history");
+  return { ok: true };
+}
+
+export async function deleteEntry(date: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Invalid date." };
+
+  const { error } = await supabase
+    .from("entries")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("date", date);
+
+  if (error) return { error: error.message };
+  revalidatePath("/checkin");
+  revalidatePath("/dashboard");
+  revalidatePath("/history");
   return { ok: true };
 }

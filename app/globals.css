@@ -899,3 +899,60 @@ textarea {
 .coach-output {
   --coach-accent: var(--accent);
 }
+
+/* ---------- entry delete + top row ---------- */
+.entry-item-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.entry-item-top .entry-item-head {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.entry-del {
+  flex-shrink: 0;
+  width: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: #ff9a93;
+  border-radius: 7px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+
+.entry-del:hover {
+  border-color: #5a2526;
+}
+
+/* ---------- system sort arrows ---------- */
+.sort-arrows {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.sort-arrow {
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+
+.sort-arrow:hover {
+  border-color: #3a3a40;
+}
