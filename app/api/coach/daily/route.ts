@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { loadKnowledge } from "@/lib/coach/knowledge";
 import { generate, CoachBusyError } from "@/lib/ai/provider";
 import { buildDailyReviewPrompt, DAILY_REVIEW_TASK } from "@/lib/coach/prompts";
+import { computeTargets } from "@/lib/diet/targets";
+import { mealTotals } from "@/lib/diet/meals";
 import type { Entry, System } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -67,12 +69,26 @@ export async function POST(request: Request) {
     );
   }
 
+  const targets = computeTargets(profile ?? null);
+  const loggedMeals = Array.isArray((entry as Entry).meals)
+    ? ((entry as Entry).meals as string[])
+    : [];
+  const logged = mealTotals(loggedMeals);
+
   const prompt = buildDailyReviewPrompt({
     profile: profile ?? null,
     systems: (systems as System[]) ?? [],
     entry: entry as Entry,
     recent: recent ?? [],
     date,
+    diet: {
+      ok: targets.ok,
+      targetKcal: targets.leanGain,
+      targetProtein: targets.protein,
+      loggedKcal: logged.kcal,
+      loggedProtein: logged.protein,
+      mealCount: loggedMeals.length,
+    },
   });
 
   try {

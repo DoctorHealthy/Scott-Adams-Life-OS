@@ -39,12 +39,17 @@ export function addDays(dateStr: string, n: number): string {
   return localDateStr(new Date(y, m - 1, d + n));
 }
 
-// Human label: "Wed, Jun 25" plus a "Today"/"Yesterday" tag handled by caller.
+// Human label: "Wed, Jun 25". Built from fixed arrays, NOT toLocaleDateString,
+// so the server (en-US) and a Vienna browser render identical text. That match
+// is what keeps React hydration happy.
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 export function prettyDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  const weekday = new Date(y, m - 1, d).getDay();
+  return `${WEEKDAYS[weekday]}, ${MONTHS[m - 1]} ${d}`;
 }

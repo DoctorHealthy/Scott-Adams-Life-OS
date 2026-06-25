@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DOMAINS, METRIC_TYPES } from "@/lib/constants";
 import type { MetricType, System } from "@/lib/types";
@@ -156,7 +157,9 @@ export default function SystemsManager({
             </div>
           ) : null}
         </div>
-        <div className="system-name">{s.name}</div>
+        <Link href={`/systems/${s.id}`} className="system-name-link">
+          {s.name}
+        </Link>
         {s.rule ? <div className="system-rule">{s.rule}</div> : null}
 
         <div className="system-meta">
@@ -187,6 +190,9 @@ export default function SystemsManager({
         </div>
 
         <div className="system-actions">
+          <Link href={`/systems/${s.id}`} className="btn btn-ghost btn-auto">
+            Playbook
+          </Link>
           <button className="btn btn-ghost" onClick={() => openEdit(s)}>
             Edit
           </button>

@@ -1,6 +1,11 @@
-// One-time seed of Mark's profile + Big Five systems.
+// Seed + consolidate Mark's profile and the Big Five systems.
 // Run with: node --env-file=.env.local scripts/seed.mjs [optional-email]
-// Idempotent: updates the profile and inserts only systems whose name is missing.
+//
+// Idempotent. Consolidates the earlier 8-system seed into the Big Five:
+// Sleep, Schedule/Morning, Mind, Diet, Exercise. Old single-purpose systems are
+// renamed in place (so their check-in history is preserved); folded sub-routines
+// (wind-down, Ondra warm-up, ankle prehab) are removed as top-level systems and
+// now live inside the Sleep and Exercise playbooks.
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -25,7 +30,7 @@ const PROFILE = {
   age: 22,
   height_cm: 188,
   weight_kg: 88,
-  activity_level: "high", // trains most days; mapped to a multiplier in the calorie module
+  activity_level: "high",
   constraints: {
     lactose_free: true,
     low_added_sugar: true,
@@ -49,101 +54,74 @@ const PROFILE = {
   },
 };
 
-// Canonical display order: Sleep, Schedule/Morning, Mind, Diet, Exercise.
-// sort_order is set from this, independent of the array order below.
-const ORDER = [
-  "Wake at target time",
-  "Wind-down read",
-  "Protect the morning block",
-  "Intention and reflection",
-  "Protein-first, tight window",
-  "Ondra morning warm-up",
-  "Training session",
-  "Left-ankle prehab",
-];
-
-// ---- The Big Five seed ----
-const SYSTEMS = [
+// ---- The Big Five, in display order: Sleep, Schedule/Morning, Mind, Diet, Exercise ----
+const CANON = [
   {
-    name: "Wake at target time",
+    name: "Sleep",
     domain: "Sleep",
-    rule: "Out of bed at the target wake time, no snooze. Wake-time consistency leads the whole shift.",
-    floor: "Up within 30 minutes of target.",
-    ceiling: "Up on target, straight into daylight.",
+    rule: "Wake at the target time every day, no snooze. Wind down on a book, not a screen. Wake time leads, bedtime falls in behind it.",
+    floor: "Up within 30 minutes of target. One chapter before lights out.",
+    ceiling: "Up on target and into daylight. Asleep near target after a real wind-down.",
     metric_type: "binary",
-    anchor: "Alarm",
-    schedule_block: "Morning, on waking",
+    anchor: "The alarm and the edge of the bed",
+    schedule_block: "First thing and last thing",
   },
   {
-    name: "Wind-down read",
-    domain: "Sleep",
-    rule: "Screens off, read until sleepy. Reading winds you down where brushing teeth does nothing.",
-    floor: "Five minutes of reading in bed.",
-    ceiling: "20 to 30 minutes reading, lights low, asleep near target.",
+    name: "Morning & schedule",
+    domain: "Flexible Schedule",
+    rule: "Own the morning before work owns the afternoon. Light, warm-up, then a 90-minute block on what matters, all before 3pm.",
+    floor: "Protect 30 focused minutes before work.",
+    ceiling: "Sunlight within 30 minutes of waking, warm-up done, a full 90-minute block, single-tasked.",
     metric_type: "binary",
-    anchor: "Getting into bed",
-    schedule_block: "Night, before bed",
+    anchor: "Straight after you wake",
+    schedule_block: "Morning, before 3pm",
   },
   {
-    name: "Protein-first, tight window",
+    name: "Mind",
+    domain: "Imagination",
+    rule: "One-line intention in the morning, an honest reflection at night. Catch the junk thoughts and reframe them. Hold the picture: athletic, free, locked in.",
+    floor: "One honest line at night.",
+    ceiling: "Morning intention set, evening reflection done, one reframe banked.",
+    metric_type: "binary",
+    anchor: "The start and the end of the day",
+    schedule_block: "Morning and night",
+  },
+  {
+    name: "Diet",
     domain: "Diet",
-    rule: "Two to three real meals, protein first, front-loaded earlier, last meal well before bed. No fasting.",
-    floor: "Hit the protein target, even if the window slips.",
-    ceiling: "Protein hit, window tight, last meal early, steady energy after eating.",
+    rule: "Hit your numbers without thinking about it. Protein first, whole-food carbs, lactose-free, low sugar. Tight window, last meal well before bed.",
+    floor: "Hit protein. Cut the junk.",
+    ceiling: "Calories and protein on target, window tight, dinner early, energy steady after eating.",
     metric_type: "binary",
     anchor: "Meals",
-    schedule_block: "Daytime, earlier-weighted",
+    schedule_block: "Daytime, front-loaded",
   },
   {
-    name: "Ondra morning warm-up",
+    name: "Exercise",
     domain: "Exercise",
-    rule: "Adam Ondra mobility warm-up to wake the body.",
-    floor: "Three minutes of the warm-up.",
-    ceiling: "Full warm-up, unrushed.",
-    metric_type: "binary",
-    anchor: "After waking",
-    schedule_block: "Morning, on waking",
-  },
-  {
-    name: "Training session",
-    domain: "Exercise",
-    rule: "Strength-endurance or power session, home or outdoors. Scaled for an ex-powerlifter, not beginner work.",
-    floor: "One hard set or a short circuit.",
-    ceiling: "Full session, high quality.",
+    rule: "Train like the ex-powerlifter you are. Ondra mobility to open the body, a real strength-endurance or power session, ankle prehab so bouldering stops costing you.",
+    floor: "Warm-up plus one hard set.",
+    ceiling: "Full warm-up, full session, ankle prehab done. Home or outdoors, no gym required.",
     metric_type: "binary",
     anchor: "After the morning block",
     schedule_block: "Late morning or midday",
   },
-  {
-    name: "Left-ankle prehab",
-    domain: "Exercise",
-    rule: "Ankle strengthening and prehab so bouldering gets easier and safer.",
-    floor: "One prehab set.",
-    ceiling: "Full prehab block, both ankles.",
-    metric_type: "binary",
-    anchor: "With training or warm-up",
-    schedule_block: "Morning or pre-session",
-  },
-  {
-    name: "Protect the morning block",
-    domain: "Flexible Schedule",
-    rule: "Guard a 90-minute deep-work or personal block before work owns 3pm to 10pm.",
-    floor: "Protect 30 minutes.",
-    ceiling: "Full 90 minutes, single-tasked, before work starts.",
-    metric_type: "binary",
-    anchor: "After the warm-up",
-    schedule_block: "Morning, before 3pm",
-  },
-  {
-    name: "Intention and reflection",
-    domain: "Imagination",
-    rule: "One-line morning intention and an evening reflection. Picture the future self: athletic, free, locked in.",
-    floor: "One line at night.",
-    ceiling: "Morning intention plus a real evening reflection.",
-    metric_type: "binary",
-    anchor: "Morning start and evening wind-down",
-    schedule_block: "Morning and night",
-  },
+];
+
+// Old single-purpose seed name -> canonical name (rename in place, keep history).
+const RENAME = {
+  "Wake at target time": "Sleep",
+  "Protect the morning block": "Morning & schedule",
+  "Intention and reflection": "Mind",
+  "Protein-first, tight window": "Diet",
+  "Training session": "Exercise",
+};
+
+// Sub-routines now folded into the Sleep / Exercise playbooks.
+const FOLD_DELETE = [
+  "Wind-down read",
+  "Ondra morning warm-up",
+  "Left-ankle prehab",
 ];
 
 async function main() {
@@ -184,51 +162,72 @@ async function main() {
   }
   console.log("Profile updated.");
 
-  const { data: existing, error: exErr } = await admin
+  // 1) Rename old systems to canonical names (preserves id + history).
+  const { data: before } = await admin
     .from("systems")
-    .select("name")
+    .select("id, name")
     .eq("user_id", user.id);
-  if (exErr) {
-    console.error("Could not read existing systems:", exErr.message);
-    process.exit(1);
-  }
-  const have = new Set((existing ?? []).map((s) => s.name));
-  const orderOf = (name) => {
-    const i = ORDER.indexOf(name);
-    return i === -1 ? ORDER.length : i;
-  };
-  const rows = SYSTEMS.filter((s) => !have.has(s.name)).map((s) => ({
-    ...s,
-    user_id: user.id,
-    active: true,
-    sort_order: orderOf(s.name),
-  }));
+  const existingNames = new Set((before ?? []).map((r) => r.name));
 
-  if (rows.length === 0) {
-    console.log("All Big Five systems already present. Nothing inserted.");
-  } else {
-    const { error: sErr } = await admin.from("systems").insert(rows);
-    if (sErr) {
-      console.error("Systems insert failed:", sErr.message);
-      process.exit(1);
+  for (const [from, to] of Object.entries(RENAME)) {
+    if (existingNames.has(from) && !existingNames.has(to)) {
+      const { error } = await admin
+        .from("systems")
+        .update({ name: to })
+        .eq("user_id", user.id)
+        .eq("name", from);
+      if (error) {
+        console.error(`Rename "${from}" -> "${to}" failed:`, error.message);
+        process.exit(1);
+      }
+      existingNames.delete(from);
+      existingNames.add(to);
+      console.log(`Renamed "${from}" -> "${to}".`);
     }
-    console.log(`Inserted ${rows.length} systems.`);
   }
 
-  // Reconcile sort_order on the canonical Big Five so the order is correct
-  // even on accounts seeded before this order was set.
-  for (let i = 0; i < ORDER.length; i++) {
-    const { error: oErr } = await admin
+  // 2) Delete folded sub-routines.
+  for (const name of FOLD_DELETE) {
+    const { error } = await admin
       .from("systems")
-      .update({ sort_order: i })
+      .delete()
       .eq("user_id", user.id)
-      .eq("name", ORDER[i]);
-    if (oErr) {
-      console.error(`Could not set order for "${ORDER[i]}":`, oErr.message);
+      .eq("name", name);
+    if (error) {
+      console.error(`Delete "${name}" failed:`, error.message);
       process.exit(1);
     }
   }
-  console.log("Order reconciled (Sleep, Schedule/Morning, Mind, Diet, Exercise).");
+
+  // 3) Reconcile the Big Five: update fields + order if present, insert if not.
+  const { data: now } = await admin
+    .from("systems")
+    .select("id, name")
+    .eq("user_id", user.id);
+  const byName = new Map((now ?? []).map((r) => [r.name, r.id]));
+
+  for (let i = 0; i < CANON.length; i++) {
+    const c = CANON[i];
+    const fields = { ...c, active: true, sort_order: i, user_id: user.id };
+    if (byName.has(c.name)) {
+      const { error } = await admin
+        .from("systems")
+        .update(fields)
+        .eq("id", byName.get(c.name));
+      if (error) {
+        console.error(`Update "${c.name}" failed:`, error.message);
+        process.exit(1);
+      }
+    } else {
+      const { error } = await admin.from("systems").insert(fields);
+      if (error) {
+        console.error(`Insert "${c.name}" failed:`, error.message);
+        process.exit(1);
+      }
+    }
+  }
+
+  console.log("Consolidated to the Big Five: Sleep, Schedule/Morning, Mind, Diet, Exercise.");
   console.log("Seed complete.");
 }
 

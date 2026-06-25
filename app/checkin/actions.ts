@@ -8,6 +8,7 @@ export type EntryInput = {
   date: string;
   energy_1_10: number | null;
   system_statuses: Record<string, SystemStatus>;
+  meals: string[];
   one_line: string;
   reflection: string;
   tomorrow_next_action: string;
@@ -44,6 +45,7 @@ export async function saveEntry(input: EntryInput): Promise<ActionResult> {
       date: input.date,
       energy_1_10: input.energy_1_10,
       system_statuses: input.system_statuses,
+      meals: input.meals,
       one_line: emptyToNull(input.one_line),
       reflection: emptyToNull(input.reflection),
       tomorrow_next_action: emptyToNull(input.tomorrow_next_action),

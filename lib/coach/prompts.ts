@@ -61,14 +61,24 @@ function fmtConstraints(c: Record<string, unknown> | null): string {
     .join(", ");
 }
 
+type DietNumbers = {
+  ok: boolean;
+  targetKcal: number | null;
+  targetProtein: number | null;
+  loggedKcal: number;
+  loggedProtein: number;
+  mealCount: number;
+};
+
 export function buildDailyReviewPrompt(args: {
   profile: ProfileLike | null;
   systems: System[];
   entry: Entry;
   recent: RecentEntry[];
   date: string;
+  diet: DietNumbers;
 }): string {
-  const { profile, systems, entry, recent, date } = args;
+  const { profile, systems, entry, recent, date, diet } = args;
 
   // ---- numbers computed in code; the model only reads them ----
   const statuses = entry.system_statuses ?? {};
@@ -122,6 +132,19 @@ ${recentLines || "- none"}
 SYSTEMS TODAY (status the user tapped)
 ${systemLines.length ? systemLines.join("\n") : "- no active systems"}
 - Tally: ${counts.done} done, ${counts.floor} floor, ${counts.skip} skip, ${counts.not_logged} not logged
+
+DIET TODAY (computed by the app from the meals the user logged)
+${
+  diet.ok
+    ? `- Calories logged: ${diet.loggedKcal} of ${diet.targetKcal ?? "not set"} target (${
+        diet.targetKcal != null ? diet.targetKcal - diet.loggedKcal : "?"
+      } kcal under)
+- Protein logged: ${diet.loggedProtein} g of ${diet.targetProtein ?? "not set"} g target (${
+        diet.targetProtein != null ? diet.targetProtein - diet.loggedProtein : "?"
+      } g under)
+- Meals logged: ${diet.mealCount}`
+    : "- Targets not computable (profile stats missing). Do not guess them."
+}
 
 THE USER'S OWN WORDS TODAY
 - One line: ${entry.one_line ?? "not logged"}

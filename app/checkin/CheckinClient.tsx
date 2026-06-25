@@ -8,15 +8,21 @@ import { addDays, localDateStr, prettyDate, STATUS_META } from "@/lib/constants"
 import type { System, SystemStatus } from "@/lib/types";
 import { saveEntry } from "./actions";
 import CoachReview from "@/components/CoachReview";
+import DietLog from "@/components/DietLog";
+import type { Targets } from "@/lib/diet/targets";
 
 const STATUSES: SystemStatus[] = ["done", "floor", "skip"];
 
 export default function CheckinClient({
   systems,
   userId,
+  targets,
+  dietMenu,
 }: {
   systems: System[];
   userId: string;
+  targets: Targets;
+  dietMenu: string[];
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -26,6 +32,7 @@ export default function CheckinClient({
 
   const [energy, setEnergy] = useState<number | null>(null);
   const [statuses, setStatuses] = useState<Record<string, SystemStatus>>({});
+  const [meals, setMeals] = useState<string[]>([]);
   const [oneLine, setOneLine] = useState("");
   const [reflection, setReflection] = useState("");
   const [nextAction, setNextAction] = useState("");
@@ -58,6 +65,7 @@ export default function CheckinClient({
 
       setEnergy(data?.energy_1_10 ?? null);
       setStatuses((data?.system_statuses as Record<string, SystemStatus>) ?? {});
+      setMeals(Array.isArray(data?.meals) ? (data.meals as string[]) : []);
       setOneLine(data?.one_line ?? "");
       setReflection(data?.reflection ?? "");
       setNextAction(data?.tomorrow_next_action ?? "");
@@ -104,6 +112,7 @@ export default function CheckinClient({
       date,
       energy_1_10: energy,
       system_statuses: statuses,
+      meals,
       one_line: oneLine,
       reflection,
       tomorrow_next_action: nextAction,
@@ -228,7 +237,7 @@ export default function CheckinClient({
                 <Link href="/systems" className="link">
                   Systems
                 </Link>{" "}
-                page (or wait for Phase 3 to seed your Big Five).
+                page.
               </p>
             ) : (
               <div className="checkin-systems">
@@ -263,6 +272,22 @@ export default function CheckinClient({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Diet: meals eaten, totals computed in code vs target */}
+          <div className="card">
+            <div className="block-head">
+              <span className="block-title">Diet</span>
+              <Link href="/systems" className="muted" style={{ fontSize: 12 }}>
+                Edit menu in the Diet playbook
+              </Link>
+            </div>
+            <DietLog
+              menuIds={dietMenu}
+              value={meals}
+              onChange={(ids) => mark(setMeals)(ids)}
+              targets={targets}
+            />
           </div>
 
           {/* Notes */}

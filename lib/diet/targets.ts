@@ -1,0 +1,72 @@
+// Calorie + macro targets. Pure code, deterministic. Mifflin-St Jeor.
+// The coach READS these numbers. It never computes them.
+
+type ProfileLike = {
+  age: number | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  activity_level: string | null;
+};
+
+const ACTIVITY: Record<string, { mult: number; label: string }> = {
+  sedentary: { mult: 1.2, label: "Sedentary" },
+  light: { mult: 1.375, label: "Light, 1 to 3 days a week" },
+  moderate: { mult: 1.55, label: "Moderate, 3 to 5 days a week" },
+  high: { mult: 1.6, label: "High, trains most days" },
+  athlete: { mult: 1.725, label: "Athlete, hard training daily" },
+};
+
+export type Targets = {
+  ok: boolean;
+  bmr: number | null;
+  maintenance: number | null;
+  leanGain: number | null; // the default goal: gain muscle, not lose weight
+  protein: number | null;
+  activityLabel: string;
+  missing: string[];
+};
+
+function roundTo(n: number, step: number): number {
+  return Math.round(n / step) * step;
+}
+
+export function computeTargets(p: ProfileLike | null): Targets {
+  const act = ACTIVITY[p?.activity_level ?? "moderate"] ?? ACTIVITY.moderate;
+  const missing: string[] = [];
+  if (!p) missing.push("profile");
+  if (p && p.age == null) missing.push("age");
+  if (p && p.height_cm == null) missing.push("height");
+  if (p && p.weight_kg == null) missing.push("weight");
+
+  if (missing.length || !p) {
+    return {
+      ok: false,
+      bmr: null,
+      maintenance: null,
+      leanGain: null,
+      protein: null,
+      activityLabel: act.label,
+      missing,
+    };
+  }
+
+  const kg = p.weight_kg as number;
+  const cm = p.height_cm as number;
+  const age = p.age as number;
+
+  // Mifflin-St Jeor, male. (A sex field gets added with the onboarding wizard.)
+  const bmr = 10 * kg + 6.25 * cm - 5 * age + 5;
+  const maintenance = roundTo(bmr * act.mult, 50);
+  const leanGain = roundTo(maintenance + 250, 50);
+  const protein = roundTo(kg * 1.9, 10);
+
+  return {
+    ok: true,
+    bmr: Math.round(bmr),
+    maintenance,
+    leanGain,
+    protein,
+    activityLabel: act.label,
+    missing: [],
+  };
+}
