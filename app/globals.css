@@ -1439,3 +1439,195 @@ textarea {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+
+/* ============================================================
+   Sleep + Exercise playbooks and check-in logs
+   ============================================================ */
+
+/* ---------- toggle rows ---------- */
+.toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-row {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+
+.toggle-row:hover {
+  border-color: #3a3a40;
+}
+
+.toggle-row.on {
+  border-color: #2c7a3f;
+  background: #102a16;
+}
+
+.toggle-box {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.toggle-row.on .toggle-box {
+  border-color: #2c7a3f;
+  color: #7ee29a;
+}
+
+.toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.toggle-hint {
+  font-size: 12px;
+}
+
+/* ---------- step display (sleep / exercise stats) ---------- */
+.step-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.step-big {
+  flex: 1 1 120px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.step-num {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.step-num.ok {
+  color: var(--good);
+}
+
+.step-cap {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.step-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.stat-pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.stat-pill.good {
+  background: #123018;
+  border-color: #2c7a3f;
+  color: #7ee29a;
+}
+
+.stat-pill.bad {
+  background: #2a1415;
+  border-color: #7a2a2a;
+  color: #ff9a93;
+}
+
+/* ---------- checklists (protocol steps) ---------- */
+.checklist {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checklist li {
+  line-height: 1.5;
+}
+
+/* ---------- weekly structure ---------- */
+.struct-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.struct-item {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.struct-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+/* ---------- session type chips ---------- */
+.type-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.type-chip-x {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.type-chip-x:hover {
+  color: #ff9a93;
+}

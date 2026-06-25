@@ -9,9 +9,23 @@ import type { System, SystemStatus } from "@/lib/types";
 import { saveEntry } from "./actions";
 import CoachReview from "@/components/CoachReview";
 import DietLog from "@/components/DietLog";
+import SleepLogCard from "@/components/SleepLog";
+import ExerciseLogCard from "@/components/ExerciseLog";
 import type { DietMeal } from "@/lib/diet/meals";
 import type { EffectiveTargets } from "@/lib/diet/config";
 import { readDietLog, emptyDietLog, type DietLogValue } from "@/lib/diet/log";
+import {
+  readSleepLog,
+  emptySleepLog,
+  type SleepConfig,
+  type SleepLog,
+} from "@/lib/sleep/sleep";
+import {
+  readExerciseLog,
+  emptyExerciseLog,
+  type ExerciseConfig,
+  type ExerciseLog,
+} from "@/lib/exercise/exercise";
 
 const STATUSES: SystemStatus[] = ["done", "floor", "skip"];
 
@@ -20,11 +34,15 @@ export default function CheckinClient({
   userId,
   targets,
   catalog,
+  sleepConfig,
+  exerciseConfig,
 }: {
   systems: System[];
   userId: string;
   targets: EffectiveTargets;
   catalog: DietMeal[];
+  sleepConfig: SleepConfig;
+  exerciseConfig: ExerciseConfig;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -35,6 +53,8 @@ export default function CheckinClient({
   const [energy, setEnergy] = useState<number | null>(null);
   const [statuses, setStatuses] = useState<Record<string, SystemStatus>>({});
   const [dietLog, setDietLog] = useState<DietLogValue>(emptyDietLog());
+  const [sleepLog, setSleepLog] = useState<SleepLog>(emptySleepLog());
+  const [exerciseLog, setExerciseLog] = useState<ExerciseLog>(emptyExerciseLog());
   const [oneLine, setOneLine] = useState("");
   const [reflection, setReflection] = useState("");
   const [nextAction, setNextAction] = useState("");
@@ -68,6 +88,12 @@ export default function CheckinClient({
       setEnergy(data?.energy_1_10 ?? null);
       setStatuses((data?.system_statuses as Record<string, SystemStatus>) ?? {});
       setDietLog(readDietLog(data?.meals));
+      const ml = (data?.module_logs ?? {}) as {
+        sleep?: unknown;
+        exercise?: unknown;
+      };
+      setSleepLog(readSleepLog(ml.sleep));
+      setExerciseLog(readExerciseLog(ml.exercise));
       setOneLine(data?.one_line ?? "");
       setReflection(data?.reflection ?? "");
       setNextAction(data?.tomorrow_next_action ?? "");
@@ -115,6 +141,7 @@ export default function CheckinClient({
       energy_1_10: energy,
       system_statuses: statuses,
       meals: dietLog,
+      module_logs: { sleep: sleepLog, exercise: exerciseLog },
       one_line: oneLine,
       reflection,
       tomorrow_next_action: nextAction,
@@ -274,6 +301,36 @@ export default function CheckinClient({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Sleep: actual wake/bed, wind-down, morning light */}
+          <div className="card">
+            <div className="block-head">
+              <span className="block-title">Sleep</span>
+              <Link href={`/systems`} className="muted" style={{ fontSize: 12 }}>
+                Tune in the Sleep playbook
+              </Link>
+            </div>
+            <SleepLogCard
+              config={sleepConfig}
+              value={sleepLog}
+              onChange={(v) => mark(setSleepLog)(v)}
+            />
+          </div>
+
+          {/* Exercise: warm-up, session, ankle */}
+          <div className="card">
+            <div className="block-head">
+              <span className="block-title">Exercise</span>
+              <Link href={`/systems`} className="muted" style={{ fontSize: 12 }}>
+                See the Exercise playbook
+              </Link>
+            </div>
+            <ExerciseLogCard
+              config={exerciseConfig}
+              value={exerciseLog}
+              onChange={(v) => mark(setExerciseLog)(v)}
+            />
           </div>
 
           {/* Diet: meals eaten, totals computed in code vs target */}

@@ -3,10 +3,16 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TopNav from "@/components/TopNav";
 import DietPlaybook from "./DietPlaybook";
+import SleepPlaybook from "./SleepPlaybook";
+import ExercisePlaybook from "./ExercisePlaybook";
 import GenericPlaybook from "./GenericPlaybook";
 import { computeTargets } from "@/lib/diet/targets";
 import { readDietConfig } from "@/lib/diet/config";
+import { readSleepConfig, readSleepLog } from "@/lib/sleep/sleep";
+import { readExerciseConfig, readExerciseLog } from "@/lib/exercise/exercise";
 import type { System } from "@/lib/types";
+
+type ModuleLogs = { sleep?: unknown; exercise?: unknown };
 
 export default async function PlaybookPage({
   params,
@@ -36,7 +42,19 @@ export default async function PlaybookPage({
     .single();
 
   const sys = system as System;
-  const isDiet = sys.domain === "Diet";
+  const domain = sys.domain;
+  const needsRecent = domain === "Sleep" || domain === "Exercise";
+
+  let recent: { date: string; module_logs: ModuleLogs }[] = [];
+  if (needsRecent) {
+    const { data } = await supabase
+      .from("entries")
+      .select("date, module_logs")
+      .eq("user_id", user.id)
+      .order("date", { ascending: false })
+      .limit(30);
+    recent = (data as { date: string; module_logs: ModuleLogs }[]) ?? [];
+  }
 
   return (
     <div className="shell">
@@ -48,7 +66,7 @@ export default async function PlaybookPage({
               &larr; Systems
             </Link>
             <div className="eyebrow" style={{ marginTop: 10 }}>
-              {sys.domain ?? "Custom"} playbook
+              {domain ?? "Custom"} playbook
             </div>
             <h1 style={{ marginTop: 6 }}>{sys.name}</h1>
             {sys.rule ? (
@@ -58,10 +76,26 @@ export default async function PlaybookPage({
             ) : null}
           </div>
 
-          {isDiet ? (
+          {domain === "Diet" ? (
             <DietPlaybook
               computed={computeTargets(profile ?? null)}
               config={readDietConfig(profile?.coaching_prefs)}
+            />
+          ) : domain === "Sleep" ? (
+            <SleepPlaybook
+              config={readSleepConfig(profile?.coaching_prefs)}
+              recentWakes={recent.map((r) => ({
+                date: r.date,
+                wake: readSleepLog(r.module_logs?.sleep).wake,
+              }))}
+            />
+          ) : domain === "Exercise" ? (
+            <ExercisePlaybook
+              config={readExerciseConfig(profile?.coaching_prefs)}
+              recent={recent.map((r) => ({
+                date: r.date,
+                log: readExerciseLog(r.module_logs?.exercise),
+              }))}
             />
           ) : (
             <GenericPlaybook system={sys} />

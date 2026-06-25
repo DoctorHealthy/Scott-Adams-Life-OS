@@ -4,12 +4,17 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { SystemStatus } from "@/lib/types";
 import type { DietLogValue } from "@/lib/diet/log";
+import type { SleepLog } from "@/lib/sleep/sleep";
+import type { ExerciseLog } from "@/lib/exercise/exercise";
+
+export type ModuleLogs = { sleep: SleepLog; exercise: ExerciseLog };
 
 export type EntryInput = {
   date: string;
   energy_1_10: number | null;
   system_statuses: Record<string, SystemStatus>;
   meals: DietLogValue;
+  module_logs: ModuleLogs;
   one_line: string;
   reflection: string;
   tomorrow_next_action: string;
@@ -47,6 +52,7 @@ export async function saveEntry(input: EntryInput): Promise<ActionResult> {
       energy_1_10: input.energy_1_10,
       system_statuses: input.system_statuses,
       meals: input.meals,
+      module_logs: input.module_logs,
       one_line: emptyToNull(input.one_line),
       reflection: emptyToNull(input.reflection),
       tomorrow_next_action: emptyToNull(input.tomorrow_next_action),

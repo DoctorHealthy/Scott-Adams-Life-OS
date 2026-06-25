@@ -6,8 +6,6 @@ function metricLabel(m: string) {
   return METRIC_TYPES.find((x) => x.value === m)?.label ?? m;
 }
 
-const COMING_SOON = new Set(["Sleep", "Exercise"]);
-
 export default function GenericPlaybook({ system }: { system: System }) {
   const rows: { k: string; v: string | null }[] = [
     { k: "Rule", v: system.rule },
@@ -28,19 +26,6 @@ export default function GenericPlaybook({ system }: { system: System }) {
           </div>
         ))}
       </div>
-
-      {COMING_SOON.has(system.domain ?? "") ? (
-        <div className="card">
-          <div className="eyebrow" style={{ marginBottom: 8 }}>
-            Full playbook coming
-          </div>
-          <p className="muted" style={{ margin: 0 }}>
-            The {system.domain} playbook gets built out next, same as Diet:
-            protocol, the exact moves, and a setup that runs with almost no
-            input. For now this is the system definition.
-          </p>
-        </div>
-      ) : null}
 
       <div>
         <Link href="/systems" className="link">

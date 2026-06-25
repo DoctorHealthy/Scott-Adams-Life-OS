@@ -4,6 +4,8 @@ import TopNav from "@/components/TopNav";
 import CheckinClient from "./CheckinClient";
 import { computeTargets } from "@/lib/diet/targets";
 import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
+import { readSleepConfig } from "@/lib/sleep/sleep";
+import { readExerciseConfig } from "@/lib/exercise/exercise";
 import type { DietMeal } from "@/lib/diet/meals";
 import type { System } from "@/lib/types";
 
@@ -27,6 +29,8 @@ export default async function CheckinPage() {
 
   const config = readDietConfig(profile?.coaching_prefs);
   const targets = effectiveTargets(computeTargets(profile ?? null), config.targets);
+  const sleepConfig = readSleepConfig(profile?.coaching_prefs);
+  const exerciseConfig = readExerciseConfig(profile?.coaching_prefs);
 
   // Log against the rotation if one is set, otherwise the whole catalog.
   const byId = new Map(config.meals.map((m) => [m.id, m]));
@@ -44,6 +48,8 @@ export default async function CheckinPage() {
           userId={user.id}
           targets={targets}
           catalog={catalog}
+          sleepConfig={sleepConfig}
+          exerciseConfig={exerciseConfig}
         />
       </main>
     </div>

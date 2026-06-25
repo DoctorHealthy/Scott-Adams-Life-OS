@@ -72,6 +72,30 @@ type DietNumbers = {
   waterTargetMl: number | null;
 };
 
+type SleepNumbers = {
+  targetWake: string;
+  targetBed: string;
+  latestWake: string | null;
+  driftMin: number | null;
+  holdStreak: number;
+  holdDays: number;
+  eligible: boolean;
+  nextWake: string;
+  atGoal: boolean;
+  windDownToday: boolean;
+  morningLightToday: boolean;
+};
+
+type ExerciseNumbers = {
+  sessionsLast7: number;
+  sessionsTarget: number;
+  floorStreak: number;
+  warmupToday: boolean;
+  sessionToday: boolean;
+  sessionTypeToday: string | null;
+  ankleToday: boolean;
+};
+
 export function buildDailyReviewPrompt(args: {
   profile: ProfileLike | null;
   systems: System[];
@@ -79,8 +103,10 @@ export function buildDailyReviewPrompt(args: {
   recent: RecentEntry[];
   date: string;
   diet: DietNumbers;
+  sleep: SleepNumbers;
+  exercise: ExerciseNumbers;
 }): string {
-  const { profile, systems, entry, recent, date, diet } = args;
+  const { profile, systems, entry, recent, date, diet, sleep, exercise } = args;
 
   // ---- numbers computed in code; the model only reads them ----
   const statuses = entry.system_statuses ?? {};
@@ -148,6 +174,31 @@ ${
 - Water: ${diet.waterMl} ml of ${diet.waterTargetMl ?? "not set"} ml target`
     : `- Calorie targets not computable (profile stats missing). Water: ${diet.waterMl} ml of ${diet.waterTargetMl ?? "not set"} ml. Do not guess the calorie numbers.`
 }
+
+SLEEP (computed by the app; the active campaign)
+- Target wake ${sleep.targetWake}, target bed ${sleep.targetBed}
+- Last logged wake: ${sleep.latestWake ?? "not logged"}${
+    sleep.driftMin != null
+      ? ` (${sleep.driftMin > 0 ? `${sleep.driftMin} min late` : sleep.driftMin < 0 ? `${-sleep.driftMin} min early` : "on target"})`
+      : ""
+  }
+- Hold streak: ${sleep.holdStreak} of ${sleep.holdDays} needed to advance${
+    sleep.atGoal
+      ? " (already at goal wake)"
+      : sleep.eligible
+        ? ` (eligible: advance to ${sleep.nextWake})`
+        : ""
+  }
+- Today: wind-down ${sleep.windDownToday ? "done" : "not done"}, morning light ${sleep.morningLightToday ? "done" : "not done"}
+
+EXERCISE (computed by the app)
+- Sessions last 7 days: ${exercise.sessionsLast7} of ${exercise.sessionsTarget} target
+- Floor streak: ${exercise.floorStreak} days
+- Today: warm-up ${exercise.warmupToday ? "done" : "not done"}, session ${
+    exercise.sessionToday
+      ? `done (${exercise.sessionTypeToday ?? "type not set"})`
+      : "not done"
+  }, ankle prehab ${exercise.ankleToday ? "done" : "not done"}
 
 THE USER'S OWN WORDS TODAY
 - One line: ${entry.one_line ?? "not logged"}
