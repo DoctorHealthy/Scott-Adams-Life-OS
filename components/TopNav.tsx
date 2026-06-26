@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation";
 import { signout } from "@/app/login/actions";
 
 const LINKS = [
-  { href: "/dashboard", label: "Home" },
-  { href: "/checkin", label: "Check-in" },
+  { href: "/today", label: "Today" },
   { href: "/history", label: "History" },
   { href: "/systems", label: "Systems" },
 ];
@@ -17,7 +16,7 @@ export default function TopNav({ email }: { email?: string }) {
   return (
     <header className="topbar">
       <div className="nav-left">
-        <Link href="/dashboard" className="brand">
+        <Link href="/today" className="brand">
           Life OS<span className="dot">.</span>
         </Link>
         <nav className="nav-links">

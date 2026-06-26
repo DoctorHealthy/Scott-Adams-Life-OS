@@ -107,8 +107,10 @@ export function buildDailyReviewPrompt(args: {
   diet: DietNumbers;
   sleep: SleepNumbers;
   exercise: ExerciseNumbers;
+  intention: string | null;
 }): string {
-  const { profile, systems, entry, recent, date, diet, sleep, exercise } = args;
+  const { profile, systems, entry, recent, date, diet, sleep, exercise, intention } =
+    args;
 
   // ---- numbers computed in code; the model only reads them ----
   const statuses = entry.system_statuses ?? {};
@@ -203,12 +205,98 @@ EXERCISE (computed by the app)
   }, ankle prehab ${exercise.ankleToday ? "done" : "not done"}
 
 THE USER'S OWN WORDS TODAY
-- One line: ${entry.one_line ?? "not logged"}
-- Reflection: ${entry.reflection ?? "not logged"}
-- Tomorrow's next action (their plan): ${entry.tomorrow_next_action ?? "not logged"}
+- Morning intention: ${intention ?? "not set"}
+- Evening reflection: ${entry.reflection ?? "not logged"}
 
 =====  END DATA  =====
 
 Now produce the DAILY REVIEW exactly as instructed above.
 `.trim();
 }
+
+// ---------- Morning briefing ----------
+
+export const BRIEFING_TASK = `
+=====  YOUR TASK NOW: MORNING BRIEFING  =====
+Greet the user briefly by name and lay out today, in your voice, from the PLAN
+block below. The plan is assembled by the app; treat every number and item as
+exact and never invent or change one.
+
+RULES
+- Reference the real plan: the wake and bed targets, the morning block, today's
+  session, the calorie, protein, and water targets, and the gem. Do not list it
+  mechanically, frame it like a coach setting up the day.
+- Persona: hardcore, directive, tight. No filler, no emojis, no em dashes, no
+  double dashes. 90 words or fewer.
+- Do NOT ask the user to type the intention; the app shows an intention input
+  right below you. You may end with a short line pointing them to set it.
+
+Plain text, no markdown symbols, no headers. Just the greeting and the setup.
+`.trim();
+
+export function buildBriefingPrompt(args: {
+  profile: ProfileLike | null;
+  plan: {
+    sleep: { wake: string; bed: string; atGoal: boolean };
+    morningBlock: string[];
+    session: string;
+    meals: { name: string }[];
+    targets: { kcal: number | null; protein: number | null; waterMl: number | null };
+    gem: { text: string; source: string };
+  };
+}): string {
+  const { profile, plan } = args;
+  const name = profile?.name ?? "there";
+  const meals =
+    plan.meals.length > 0
+      ? plan.meals.map((m) => `  - ${m.name}`).join("\n")
+      : "  - no meals in the rotation yet";
+  const block =
+    plan.morningBlock.length > 0
+      ? plan.morningBlock.map((b) => `  - ${b}`).join("\n")
+      : "  - no morning block set yet";
+
+  return `
+=====  PLAN (assembled by the app; exact, do not change)  =====
+
+Name: ${name}
+
+SLEEP
+- Target wake ${plan.sleep.wake}, target bed ${plan.sleep.bed}${plan.sleep.atGoal ? " (at goal)" : ""}
+
+MORNING BLOCK
+${block}
+
+TRAINING
+- Today's suggested session: ${plan.session}
+
+DIET TARGETS
+- ${plan.targets.kcal ?? "not set"} kcal, ${plan.targets.protein ?? "not set"} g protein, ${plan.targets.waterMl ?? "not set"} ml water
+- Planned meals:
+${meals}
+
+GEM OF THE DAY
+- "${plan.gem.text}" (${plan.gem.source})
+
+=====  END PLAN  =====
+
+Now write the morning briefing exactly as instructed above.
+`.trim();
+}
+
+// ---------- Ask the coach ----------
+
+export const ASK_TASK = `
+=====  YOUR TASK NOW: ANSWER A QUESTION  =====
+The user is asking you a quick question. Answer it in your voice, grounded in the
+knowledge base and the user's profile.
+
+RULES
+- Persona: hardcore, directive, strategic, tight. No filler, no emojis, no em
+  dashes, no double dashes.
+- Never invent the user's personal numbers (energy, streaks, calories, times). If
+  a specific number would be needed and you were not given it, say you do not have
+  it and point them to the relevant page.
+- Keep it under about 150 words unless the question truly needs more.
+`.trim();
+

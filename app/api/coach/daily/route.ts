@@ -19,9 +19,10 @@ import {
   computeExerciseStats,
   sessionTypeLabel,
 } from "@/lib/exercise/exercise";
+import { readMindLog } from "@/lib/mind/config";
 import type { Entry, System } from "@/lib/types";
 
-type ModuleLogs = { sleep?: unknown; exercise?: unknown };
+type ModuleLogs = { sleep?: unknown; exercise?: unknown; mind?: unknown };
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -118,6 +119,7 @@ export async function POST(request: Request) {
     date
   );
   const todayEx = readExerciseLog(todayModules.exercise);
+  const intention = readMindLog(todayModules.mind).intention;
 
   const prompt = buildDailyReviewPrompt({
     profile: profile ?? null,
@@ -159,6 +161,7 @@ export async function POST(request: Request) {
         : null,
       ankleToday: todayEx.ankle,
     },
+    intention,
   });
 
   try {

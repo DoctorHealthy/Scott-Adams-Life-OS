@@ -1,20 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function CoachReview({
   date,
   enabled,
   hint,
+  autoRun = false,
 }: {
   date: string;
   enabled: boolean;
   hint?: string;
+  autoRun?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const autoRanFor = useRef<string | null>(null);
+
+  // In the evening, run the review automatically once (per day), but only when
+  // there is a saved entry to read.
+  useEffect(() => {
+    if (autoRun && enabled && autoRanFor.current !== date && !text && !loading) {
+      autoRanFor.current = date;
+      run();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun, enabled, date]);
 
   async function run() {
     setLoading(true);

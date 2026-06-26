@@ -3,6 +3,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TopNav from "@/components/TopNav";
 import EntryCard, { type EntryRow, type SysMini } from "@/components/EntryCard";
+import { readMindLog } from "@/lib/mind/config";
+
+type RawEntry = {
+  date: string;
+  energy_1_10: number | null;
+  reflection: string | null;
+  system_statuses: Record<string, EntryRow["system_statuses"][string]>;
+  module_logs?: { mind?: unknown };
+};
 
 export default async function HistoryPage() {
   const supabase = await createClient();
@@ -19,13 +28,17 @@ export default async function HistoryPage() {
 
   const { data: entries } = await supabase
     .from("entries")
-    .select(
-      "date, energy_1_10, one_line, reflection, tomorrow_next_action, system_statuses"
-    )
+    .select("date, energy_1_10, reflection, system_statuses, module_logs")
     .eq("user_id", user.id)
     .order("date", { ascending: false });
 
-  const list = (entries as EntryRow[]) ?? [];
+  const list: EntryRow[] = ((entries as RawEntry[]) ?? []).map((e) => ({
+    date: e.date,
+    energy_1_10: e.energy_1_10,
+    reflection: e.reflection,
+    intention: readMindLog(e.module_logs?.mind).intention,
+    system_statuses: e.system_statuses ?? {},
+  }));
   const sys = (systems as SysMini[]) ?? [];
 
   return (
@@ -46,8 +59,8 @@ export default async function HistoryPage() {
           {list.length === 0 ? (
             <div className="card empty">
               <p>No check-ins yet.</p>
-              <Link href="/checkin" className="btn btn-primary btn-auto">
-                Start today&apos;s check-in
+              <Link href="/today" className="btn btn-primary btn-auto">
+                Go to Today
               </Link>
             </div>
           ) : (

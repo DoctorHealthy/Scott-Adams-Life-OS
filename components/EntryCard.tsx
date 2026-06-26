@@ -16,9 +16,8 @@ export type SysMini = {
 export type EntryRow = {
   date: string;
   energy_1_10: number | null;
-  one_line: string | null;
+  intention: string | null;
   reflection: string | null;
-  tomorrow_next_action: string | null;
   system_statuses: Record<string, SystemStatus>;
 };
 
@@ -106,10 +105,8 @@ export default function EntryCard({
           </div>
           {!open ? (
             <div className="entry-oneline">
-              {entry.one_line ? (
-                entry.one_line
-              ) : (
-                <span className="muted">No one-line logged.</span>
+              {entry.reflection || entry.intention || (
+                <span className="muted">No notes logged.</span>
               )}
             </div>
           ) : null}
@@ -126,12 +123,8 @@ export default function EntryCard({
 
       {open ? (
         <div className="entry-detail">
-          <Field label="One line" value={entry.one_line} />
+          <Field label="Morning intention" value={entry.intention} />
           <Field label="Evening reflection" value={entry.reflection} body />
-          <Field
-            label="Tomorrow's next action"
-            value={entry.tomorrow_next_action}
-          />
 
           <div className="detail-block">
             <div className="detail-label">Systems</div>

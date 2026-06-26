@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { localDateStr } from "@/lib/constants";
-import { gemForDate } from "@/lib/mind/gems";
 import { reframesByCategory, REFRAMES } from "@/lib/mind/reframes";
-import { saveMindConfig, } from "@/app/mind/actions";
+import { saveMindConfig } from "@/app/mind/actions";
 import type { MindConfig } from "@/lib/mind/config";
 
 export default function MindPlaybook({ config }: { config: MindConfig }) {
@@ -15,7 +13,6 @@ export default function MindPlaybook({ config }: { config: MindConfig }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const gem = gemForDate(localDateStr());
   const pinnedSet = new Set(pinned);
 
   async function persist(next: MindConfig, message: string) {
@@ -65,20 +62,6 @@ export default function MindPlaybook({ config }: { config: MindConfig }) {
             {error}
           </div>
         ) : null}
-      </div>
-
-      {/* Daily gem */}
-      <div className="card">
-        <div className="eyebrow" style={{ marginBottom: 10 }}>
-          Today&apos;s gem
-        </div>
-        <blockquote className="gem">
-          <p className="gem-text">{gem.text}</p>
-          <footer className="gem-source">
-            {gem.source}
-            {gem.note ? <span className="gem-note"> ({gem.note})</span> : null}
-          </footer>
-        </blockquote>
       </div>
 
       {/* Intention + reflection framing */}
