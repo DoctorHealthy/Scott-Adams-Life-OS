@@ -2,6 +2,7 @@
 // The coach reads these numbers and advises; it never computes them.
 
 export type SleepConfig = {
+  startWake: string; // the wake time the shift began at, "HH:MM" (for step numbering)
   currentWake: string; // current target wake (the step), "HH:MM"
   goalWake: string; // dream goal, "HH:MM"
   stepMinutes: number; // 15 to 30
@@ -32,12 +33,20 @@ export const HOLD_DAYS = 3; // "several days"
 export const WAKE_TOLERANCE_MIN = 30;
 
 export const DEFAULT_SLEEP_CONFIG: SleepConfig = {
+  startWake: "10:30",
   currentWake: "10:30",
   goalWake: "08:15",
   stepMinutes: 30,
   sleepHours: 8,
   stepStartedOn: null,
 };
+
+// Which step of the shift the user is on (1 = the start). Code, deterministic.
+export function stepNumber(c: SleepConfig): number {
+  const moved = hhmmToMin(c.startWake) - hhmmToMin(c.currentWake);
+  const steps = c.stepMinutes > 0 ? Math.round(moved / c.stepMinutes) : 0;
+  return Math.max(1, steps + 1);
+}
 
 export function hhmmToMin(s: string): number {
   const [h, m] = s.split(":").map(Number);

@@ -1905,9 +1905,167 @@ textarea {
   cursor: pointer;
 }
 
-/* ---------- Today: two-column layout ---------- */
+/* ---------- Today: dashboard layout ---------- */
 .container-today {
   max-width: 1200px;
+}
+
+.today2 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.today-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.today-focus {
+  text-align: right;
+  max-width: 55%;
+}
+
+.today-focus-k {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.today-focus-v {
+  font-size: 15px;
+}
+
+.energy-hero {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.energy-hero-num {
+  font-size: 56px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.energy-hero-max {
+  font-size: 20px;
+  color: var(--muted);
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.energy-hero-controls {
+  flex: 1 1 280px;
+  min-width: 240px;
+}
+
+.energy-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.today-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.sys-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.sys-card-wide {
+  grid-column: 1 / -1;
+}
+
+.sys-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.sys-plan {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.sys-card-foot {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.sys-card-foot .link {
+  font-size: 13px;
+}
+
+.sched-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.sched-k {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.sched-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.today-rail-sticky {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .today-cols {
+    grid-template-columns: 1fr;
+  }
+  .today-rail-sticky {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .sys-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .today-grid {

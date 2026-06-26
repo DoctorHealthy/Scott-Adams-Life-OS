@@ -1,7 +1,7 @@
 "use client";
 
 import ToggleRow from "./ToggleRow";
-import { targetBedtime, type SleepConfig, type SleepLog } from "@/lib/sleep/sleep";
+import type { SleepConfig, SleepLog } from "@/lib/sleep/sleep";
 
 export default function SleepLogCard({
   config,
@@ -19,7 +19,6 @@ export default function SleepLogCard({
   return (
     <div>
       <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-        Target wake {config.currentWake} &middot; target bed {targetBedtime(config)}.
         Wake time leads. Hold it even after a bad night.
       </p>
       <div className="form-row">

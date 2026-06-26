@@ -51,7 +51,7 @@ export default async function TodayPage() {
           catalog={catalog}
           sleepConfig={sleepConfig}
           exerciseConfig={exerciseConfig}
-          morningBlock={scheduleConfig.morningBlock}
+          schedule={scheduleConfig}
           dietWindow={dietConfig.window}
         />
       </main>

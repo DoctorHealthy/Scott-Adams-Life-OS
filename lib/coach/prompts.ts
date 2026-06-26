@@ -217,70 +217,98 @@ Now produce the DAILY REVIEW exactly as instructed above.
 // ---------- Morning briefing ----------
 
 export const BRIEFING_TASK = `
-=====  YOUR TASK NOW: MORNING BRIEFING  =====
-Greet the user briefly by name and lay out today, in your voice, from the PLAN
-block below. The plan is assembled by the app; treat every number and item as
-exact and never invent or change one.
+=====  YOUR TASK NOW: DAILY BRIEFING  =====
+Write a short, fresh coaching note for today, in your voice, from the SIGNALS
+block below. The signals are computed by the app; treat every number as exact and
+never invent one.
+
+This is NOT a recitation of static targets (those live in the cards on the page).
+It is a coaching note that reacts to what actually changed.
 
 RULES
-- Reference the real plan: the wake and bed targets, the morning block, today's
-  session, the calorie, protein, and water targets, and the gem. Do not list it
-  mechanically, frame it like a coach setting up the day.
-- Persona: hardcore, directive, tight. No filler, no emojis, no em dashes, no
-  double dashes. 90 words or fewer.
-- Do NOT ask the user to type the intention; the app shows an intention input
-  right below you. You may end with a short line pointing them to set it.
+- 2 to 4 sentences. Coach voice: hardcore, directive, tight. No filler, no emojis,
+  no em dashes, no double dashes.
+- Tie yesterday to today. Lead with what changed or what is off (energy move, a
+  slip, a drift, being behind on sessions, protein under). Reference the real
+  signals.
+- Mention the sleep step and today's wake target only if it is the lever today.
+  Note if today is a German day when it matters for the plan.
+- End with ONE clear focus for today, not a list.
+- It must read differently on a different day. Never invent numbers.
 
-Plain text, no markdown symbols, no headers. Just the greeting and the setup.
+Plain text, no markdown symbols, no headers.
 `.trim();
 
-export function buildBriefingPrompt(args: {
-  profile: ProfileLike | null;
-  plan: {
-    sleep: { wake: string; bed: string; atGoal: boolean };
-    morningBlock: string[];
-    session: string;
-    meals: { name: string }[];
-    targets: { kcal: number | null; protein: number | null; waterMl: number | null };
-    gem: { text: string; source: string };
+type BriefingSignalsLike = {
+  name: string;
+  germanDay: boolean;
+  yesterday: { logged: boolean; energy: number | null; slipped: string[] };
+  energy7: { avg: number | null; direction: string; count: number };
+  sleep: {
+    stepNumber: number;
+    currentWake: string;
+    targetBed: string;
+    lastWake: string | null;
+    driftMin: number | null;
+    holdStreak: number;
+    eligible: boolean;
+    atGoal: boolean;
   };
-}): string {
-  const { profile, plan } = args;
-  const name = profile?.name ?? "there";
-  const meals =
-    plan.meals.length > 0
-      ? plan.meals.map((m) => `  - ${m.name}`).join("\n")
-      : "  - no meals in the rotation yet";
-  const block =
-    plan.morningBlock.length > 0
-      ? plan.morningBlock.map((b) => `  - ${b}`).join("\n")
-      : "  - no morning block set yet";
+  training: {
+    sessionDue: string;
+    sessionsLast7: number;
+    sessionsTarget: number;
+    floorStreak: number;
+    behind: boolean;
+  };
+  diet: { proteinAvg: number | null; proteinTarget: number | null; proteinUnder: boolean };
+};
+
+export function buildBriefingPrompt(signals: BriefingSignalsLike): string {
+  const s = signals;
+  const slipped = s.yesterday.slipped.length
+    ? s.yesterday.slipped.join(", ")
+    : "nothing flagged";
+  const drift =
+    s.sleep.driftMin == null
+      ? "no wake logged"
+      : s.sleep.driftMin > 0
+        ? `${s.sleep.driftMin} min late`
+        : s.sleep.driftMin < 0
+          ? `${-s.sleep.driftMin} min early`
+          : "on target";
 
   return `
-=====  PLAN (assembled by the app; exact, do not change)  =====
+=====  SIGNALS (computed by the app; exact, do not change)  =====
 
-Name: ${name}
+Name: ${s.name}
+Today is a German lesson day: ${s.germanDay ? "yes (Tue/Fri)" : "no"}
 
-SLEEP
-- Target wake ${plan.sleep.wake}, target bed ${plan.sleep.bed}${plan.sleep.atGoal ? " (at goal)" : ""}
+YESTERDAY
+- Logged: ${s.yesterday.logged ? "yes" : "no"}
+- Energy: ${s.yesterday.energy ?? "not logged"}
+- Slipped (floor or skip): ${slipped}
 
-MORNING BLOCK
-${block}
+ENERGY TREND
+- Last ${s.energy7.count} logged days average: ${s.energy7.avg != null ? s.energy7.avg.toFixed(1) : "not logged"}
+- Direction: ${s.energy7.direction}
+
+SLEEP SHIFT
+- On step ${s.sleep.stepNumber}, today's wake target ${s.sleep.currentWake}, bed ${s.sleep.targetBed}
+- Last logged wake: ${s.sleep.lastWake ?? "not logged"} (${drift})
+- Hold streak: ${s.sleep.holdStreak}${s.sleep.atGoal ? " (at goal)" : s.sleep.eligible ? " (eligible to advance)" : ""}
 
 TRAINING
-- Today's suggested session: ${plan.session}
+- Session due today: ${s.training.sessionDue}
+- Sessions last 7 days: ${s.training.sessionsLast7} of ${s.training.sessionsTarget}${s.training.behind ? " (behind)" : ""}
+- Daily floor streak: ${s.training.floorStreak}
 
-DIET TARGETS
-- ${plan.targets.kcal ?? "not set"} kcal, ${plan.targets.protein ?? "not set"} g protein, ${plan.targets.waterMl ?? "not set"} ml water
-- Planned meals:
-${meals}
+DIET
+- Protein recent average: ${s.diet.proteinAvg != null ? Math.round(s.diet.proteinAvg) : "not logged"} g of ${s.diet.proteinTarget ?? "not set"} g target${s.diet.proteinUnder ? " (running under)" : ""}
 
-GEM OF THE DAY
-- "${plan.gem.text}" (${plan.gem.source})
+=====  END SIGNALS  =====
 
-=====  END PLAN  =====
-
-Now write the morning briefing exactly as instructed above.
+Now write today's briefing exactly as instructed above.
 `.trim();
 }
 

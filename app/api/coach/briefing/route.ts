@@ -7,9 +7,8 @@ import { computeTargets } from "@/lib/diet/targets";
 import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
 import { readSleepConfig } from "@/lib/sleep/sleep";
 import { readExerciseConfig } from "@/lib/exercise/exercise";
-import { readScheduleConfig } from "@/lib/schedule/schedule";
-import { buildPlan } from "@/lib/today/plan";
-import type { DietMeal } from "@/lib/diet/meals";
+import { computeBriefingSignals, type BriefingRecent } from "@/lib/today/briefing";
+import type { System } from "@/lib/types";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -31,30 +30,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid date." }, { status: 400 });
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const [{ data: profile }, { data: systems }, { data: recent }] = await Promise.all([
+    supabase.from("users").select("*").eq("id", user.id).single(),
+    supabase
+      .from("systems")
+      .select("id, name, domain, active")
+      .eq("user_id", user.id)
+      .eq("active", true),
+    supabase
+      .from("entries")
+      .select("date, energy_1_10, system_statuses, meals, module_logs")
+      .eq("user_id", user.id)
+      .lte("date", date)
+      .order("date", { ascending: false })
+      .limit(14),
+  ]);
 
   const dietConfig = readDietConfig(profile?.coaching_prefs);
   const targets = effectiveTargets(
     computeTargets(profile ?? null),
     dietConfig.targets
   );
-  const byId = new Map(dietConfig.meals.map((m) => [m.id, m]));
-  const catalog: DietMeal[] =
-    dietConfig.menu.length > 0
-      ? dietConfig.menu.map((id) => byId.get(id)).filter((m): m is DietMeal => !!m)
-      : dietConfig.meals;
 
-  const plan = buildPlan({
+  const signals = computeBriefingSignals({
     date,
+    name: profile?.name ?? "there",
+    systems: (systems as System[]) ?? [],
     sleepConfig: readSleepConfig(profile?.coaching_prefs),
-    morningBlock: readScheduleConfig(profile?.coaching_prefs).morningBlock,
     exerciseConfig: readExerciseConfig(profile?.coaching_prefs),
-    dietCatalog: catalog,
-    targets,
+    proteinTarget: targets.protein,
+    recent: (recent as BriefingRecent[]) ?? [],
   });
 
   let system: string;
@@ -67,10 +72,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const prompt = buildBriefingPrompt({ profile: profile ?? null, plan });
-
   try {
-    const text = await generate({ system, prompt, temperature: 0.7 });
+    const text = await generate({
+      system,
+      prompt: buildBriefingPrompt(signals),
+      temperature: 0.7,
+    });
     return NextResponse.json({ text });
   } catch (e) {
     if (e instanceof CoachBusyError) {
