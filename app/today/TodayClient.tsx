@@ -7,27 +7,28 @@ import { createClient } from "@/lib/supabase/client";
 import { addDays, localDateStr, prettyDate, STATUS_META } from "@/lib/constants";
 import type { System, SystemStatus } from "@/lib/types";
 import { saveEntry } from "@/app/checkin/actions";
+import { saveGoals } from "@/app/goals/actions";
 import CoachReview from "@/components/CoachReview";
-import CoachBriefing from "@/components/CoachBriefing";
 import AskCoach from "@/components/AskCoach";
 import Modal from "@/components/Modal";
 import DietLog from "@/components/DietLog";
 import SleepLogCard from "@/components/SleepLog";
 import ExerciseLogCard from "@/components/ExerciseLog";
+import GoalsCard from "@/components/GoalsCard";
 import type { DietMeal } from "@/lib/diet/meals";
 import type { EffectiveTargets } from "@/lib/diet/config";
-import { readDietLog, emptyDietLog, logTotals, type DietLogValue } from "@/lib/diet/log";
+import { readDietLog, emptyDietLog, type DietLogValue } from "@/lib/diet/log";
 import {
   readSleepLog,
   emptySleepLog,
   targetBedtime,
-  stepNumber,
   type SleepConfig,
   type SleepLog,
 } from "@/lib/sleep/sleep";
 import {
   readExerciseLog,
   emptyExerciseLog,
+  computeExerciseStats,
   type ExerciseConfig,
   type ExerciseLog,
 } from "@/lib/exercise/exercise";
@@ -35,8 +36,22 @@ import { readMindLog, emptyMindLog, type MindLog } from "@/lib/mind/config";
 import type { ScheduleConfig } from "@/lib/schedule/schedule";
 import { sessionForDate } from "@/lib/today/plan";
 import { gemForDate } from "@/lib/mind/gems";
+import {
+  currentQuarter,
+  currentYear,
+  goalProgress,
+  type Goal,
+} from "@/lib/goals/goals";
 
 const STATUSES: SystemStatus[] = ["done", "floor", "skip"];
+
+export type RecentDay = {
+  date: string;
+  energy_1_10: number | null;
+  system_statuses: Record<string, SystemStatus>;
+  meals: unknown;
+  module_logs: { sleep?: unknown; exercise?: unknown } | null;
+};
 
 export default function TodayClient({
   userId,
@@ -46,6 +61,8 @@ export default function TodayClient({
   sleepConfig,
   exerciseConfig,
   schedule,
+  recent,
+  goals,
 }: {
   userId: string;
   systems: System[];
@@ -54,6 +71,8 @@ export default function TodayClient({
   sleepConfig: SleepConfig;
   exerciseConfig: ExerciseConfig;
   schedule: ScheduleConfig;
+  recent: RecentDay[];
+  goals: Goal[];
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -80,12 +99,23 @@ export default function TodayClient({
 
   // UI state
   const [openRows, setOpenRows] = useState<Record<string, boolean>>({});
-  const [showPlan, setShowPlan] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
 
   const defaultWake = sleepConfig.currentWake;
   const defaultBed = targetBedtime(sleepConfig);
+
+  // Diet prefill: most recent logged day's calories/protein, or the target as a
+  // baseline, so the fields never start at zero.
+  const priorDiet = (() => {
+    for (const r of recent) {
+      const d = readDietLog(r.meals);
+      if (d.kcal > 0 || d.protein > 0) return d;
+    }
+    return null;
+  })();
+  const prefillKcal = priorDiet?.kcal ?? targets.leanGain ?? 0;
+  const prefillProtein = priorDiet?.protein ?? targets.protein ?? 0;
 
   useEffect(() => {
     setDate((d) => d ?? localDateStr());
@@ -107,7 +137,11 @@ export default function TodayClient({
 
       setEnergy(data?.energy_1_10 ?? null);
       setStatuses((data?.system_statuses as Record<string, SystemStatus>) ?? {});
-      setDietLog(readDietLog(data?.meals));
+      setDietLog(
+        data
+          ? readDietLog(data.meals)
+          : { kcal: prefillKcal, protein: prefillProtein, waterMl: 0 }
+      );
       const ml = (data?.module_logs ?? {}) as {
         sleep?: unknown;
         exercise?: unknown;
@@ -128,7 +162,7 @@ export default function TodayClient({
       setSaved(false);
       setLoading(false);
     },
-    [supabase, userId, defaultWake, defaultBed]
+    [supabase, userId, defaultWake, defaultBed, prefillKcal, prefillProtein]
   );
 
   useEffect(() => {
@@ -203,8 +237,34 @@ export default function TodayClient({
   const schedSys = sysByDomain("Flexible Schedule");
 
   const gem = gemForDate(date);
-  const dietTotals = logTotals(dietLog.items);
   const sessionDue = sessionForDate(exerciseConfig, date);
+
+  // ---- goal progress inputs (computed in code from recent days) ----
+  const exStats = computeExerciseStats(
+    exerciseConfig,
+    recent.map((r) => ({ date: r.date, log: readExerciseLog(r.module_logs?.exercise) })),
+    date
+  );
+  const proteinTarget = targets.protein;
+  const last7 = recent.filter((r) => r.date <= date).slice(0, 7);
+  const proteinDaysLogged = last7.filter((r) => readDietLog(r.meals).protein > 0).length;
+  const proteinDaysHit =
+    proteinTarget == null
+      ? 0
+      : last7.filter((r) => readDietLog(r.meals).protein >= proteinTarget * 0.9).length;
+  const progressInputs = {
+    sleepConfig,
+    sessionsLast7: exStats.sessionsLast7,
+    sessionsTarget: exStats.sessionsTarget,
+    proteinDaysHit,
+    proteinDaysLogged,
+  };
+  const progressFor = (g: Goal) => goalProgress(g, progressInputs);
+
+  async function persistGoals(next: Goal[]) {
+    await saveGoals(next);
+    router.refresh();
+  }
 
   // Plain helpers that RETURN JSX (not components used as <Row/>), so the
   // expanded inputs keep focus across re-renders instead of remounting.
@@ -309,54 +369,15 @@ export default function TodayClient({
             <span>{mindLog.intention}</span>
           </div>
         ) : null}
+
+        <div className="gem-line">
+          &ldquo;{gem.text}&rdquo; <span className="muted">{gem.source}</span>
+        </div>
       </div>
 
       {error ? <div className="alert alert-error">{error}</div> : null}
 
-      {/* Briefing */}
-      <div className="card">
-        <CoachBriefing date={date} />
-        <div className="gem-line">
-          &ldquo;{gem.text}&rdquo; <span className="muted">{gem.source}</span>
-        </div>
-        <button
-          className="link-btn"
-          style={{ marginTop: 12 }}
-          onClick={() => setShowPlan((s) => !s)}
-        >
-          {showPlan ? "Hide today's plan" : "Show today's plan"}
-        </button>
-        {showPlan ? (
-          <div className="plan-summary">
-            <div className="plan-sum-row">
-              <span className="plan-sum-k">Sleep</span>
-              <span>
-                Wake {sleepConfig.currentWake} &middot; bed {targetBedtime(sleepConfig)}{" "}
-                &middot; step {stepNumber(sleepConfig)}
-              </span>
-            </div>
-            <div className="plan-sum-row">
-              <span className="plan-sum-k">Session</span>
-              <span>{sessionDue}</span>
-            </div>
-            <div className="plan-sum-row">
-              <span className="plan-sum-k">Targets</span>
-              <span>
-                {targets.leanGain ?? "--"} kcal &middot; {targets.protein ?? "--"} g
-                protein &middot; {targets.waterMl ?? "--"} ml water
-              </span>
-            </div>
-            {catalog.length ? (
-              <div className="plan-sum-row">
-                <span className="plan-sum-k">Meals</span>
-                <span>{catalog.map((m) => m.name).join(", ")}</span>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
-      {/* Systems checklist */}
+      {/* Systems checklist, ordered by the flow of the day */}
       <div className="syslist">
         {renderRow(
           "sleep",
@@ -370,57 +391,6 @@ export default function TodayClient({
               onChange={(v) => mark(setSleepLog)(v)}
             />
             <RowFoot sys={sleepSys} />
-          </>
-        )}
-
-        {renderRow(
-          "training",
-          "Training",
-          sessionDue,
-          exSys?.id,
-          <>
-            <ExerciseLogCard
-              config={exerciseConfig}
-              value={exerciseLog}
-              onChange={(v) => mark(setExerciseLog)(v)}
-            />
-            <RowFoot sys={exSys} />
-          </>
-        )}
-
-        {renderRow(
-          "diet",
-          "Diet",
-          `${dietTotals.kcal} / ${targets.leanGain ?? "--"} kcal`,
-          dietSys?.id,
-          <>
-            <DietLog
-              catalog={catalog}
-              value={dietLog}
-              onChange={(v) => mark(setDietLog)(v)}
-              targets={targets}
-            />
-            <RowFoot sys={dietSys} />
-          </>
-        )}
-
-        {renderRow(
-          "mind",
-          "Mind",
-          mindLog.intention ? "intention set" : undefined,
-          mindSys?.id,
-          <>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Today&apos;s intention (one line, optional)</label>
-              <input
-                value={mindLog.intention ?? ""}
-                onChange={(e) =>
-                  mark(setMindLog)({ intention: e.target.value || null })
-                }
-                placeholder="Set the day's posture"
-              />
-            </div>
-            <RowFoot sys={mindSys} label="Vision and reframes" />
           </>
         )}
 
@@ -471,13 +441,99 @@ export default function TodayClient({
             <RowFoot sys={schedSys} />
           </>
         )}
+
+        {renderRow(
+          "training",
+          "Training",
+          sessionDue,
+          exSys?.id,
+          <>
+            <ExerciseLogCard
+              config={exerciseConfig}
+              value={exerciseLog}
+              onChange={(v) => mark(setExerciseLog)(v)}
+            />
+            <RowFoot sys={exSys} />
+          </>
+        )}
+
+        {renderRow(
+          "diet",
+          "Diet",
+          `${dietLog.kcal} / ${targets.leanGain ?? "--"} kcal`,
+          dietSys?.id,
+          <>
+            <DietLog
+              catalog={catalog}
+              value={dietLog}
+              onChange={(v) => mark(setDietLog)(v)}
+              targets={targets}
+            />
+            <RowFoot sys={dietSys} />
+          </>
+        )}
+
+        {renderRow(
+          "mind",
+          "Mind",
+          mindLog.intention ? "intention set" : undefined,
+          mindSys?.id,
+          <>
+            <div className="field">
+              <label>Morning intention (one line)</label>
+              <input
+                value={mindLog.intention ?? ""}
+                onChange={(e) =>
+                  mark(setMindLog)({ intention: e.target.value || null })
+                }
+                placeholder="Set the day's posture"
+              />
+            </div>
+            <div className="field">
+              <label>Evening reflection</label>
+              <p className="journal-prompts muted">
+                What happened today? What did you do about it?
+              </p>
+              <textarea
+                rows={4}
+                value={reflection}
+                onChange={(e) => mark(setReflection)(e.target.value)}
+                placeholder="Cap the day here."
+              />
+            </div>
+            <div className="journal-controls">
+              <button
+                className="btn btn-primary btn-auto"
+                onClick={save}
+                disabled={saving}
+              >
+                {saving ? "Saving..." : "Save day"}
+              </button>
+              <label className="check-row" style={{ margin: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={isPrivate}
+                  onChange={(e) => mark(setIsPrivate)(e.target.checked)}
+                />
+                <span>Private. Only you can see this.</span>
+              </label>
+              <span className="save-status muted">
+                {saved && !dirty ? "Saved." : dirty ? "Unsaved." : "Up to date."}
+              </span>
+            </div>
+            <RowFoot sys={mindSys} label="Vision and reframes" />
+          </>
+        )}
       </div>
 
-      {/* Goals row (full board built next) */}
-      <Link href="/goals" className="goals-row card">
-        <span className="block-title">Goals</span>
-        <span className="muted">Direction and progress &rarr;</span>
-      </Link>
+      {/* Goals: compact quarter calendar on the page */}
+      <GoalsCard
+        initialGoals={goals}
+        year={currentYear(date)}
+        thisQuarter={currentQuarter(date)}
+        progressFor={progressFor}
+        onPersist={persistGoals}
+      />
 
       {/* Actions */}
       <div className="today-actions">
@@ -489,43 +545,8 @@ export default function TodayClient({
         </button>
       </div>
 
-      <div className="save-bar">
-        <button className="btn btn-primary btn-auto" onClick={save} disabled={saving}>
-          {saving ? "Saving..." : "Save day"}
-        </button>
-        <span className="save-status muted">
-          {saved && !dirty ? "Saved." : dirty ? "Unsaved changes." : "Up to date."}
-        </span>
-      </div>
-
       {reviewOpen ? (
         <Modal title="Review my day" onClose={() => setReviewOpen(false)}>
-          <div className="field">
-            <label>Evening reflection</label>
-            <textarea
-              rows={3}
-              value={reflection}
-              onChange={(e) => mark(setReflection)(e.target.value)}
-              placeholder="What lifted your energy, what drained it"
-            />
-          </div>
-          <div className="btn-row" style={{ marginBottom: 4 }}>
-            <button
-              className="btn btn-primary btn-auto"
-              onClick={save}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save day"}
-            </button>
-            <label className="check-row" style={{ margin: 0 }}>
-              <input
-                type="checkbox"
-                checked={isPrivate}
-                onChange={(e) => mark(setIsPrivate)(e.target.checked)}
-              />
-              <span>Private</span>
-            </label>
-          </div>
           <CoachReview
             key={date}
             date={date}
@@ -533,7 +554,7 @@ export default function TodayClient({
             autoRun
             hint={
               !entryExists
-                ? "Save the day first, then get the review."
+                ? "Save the day in the Mind section first, then get the review."
                 : "Save your latest changes, then re-run the review."
             }
           />

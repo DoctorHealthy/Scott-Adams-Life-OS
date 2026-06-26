@@ -5,7 +5,7 @@ import { generate, CoachBusyError } from "@/lib/ai/provider";
 import { buildDailyReviewPrompt, DAILY_REVIEW_TASK } from "@/lib/coach/prompts";
 import { computeTargets } from "@/lib/diet/targets";
 import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
-import { readDietLog, logTotals } from "@/lib/diet/log";
+import { readDietLog } from "@/lib/diet/log";
 import {
   readSleepConfig,
   readSleepLog,
@@ -89,7 +89,6 @@ export async function POST(request: Request) {
   const config = readDietConfig(profile?.coaching_prefs);
   const eff = effectiveTargets(computeTargets(profile ?? null), config.targets);
   const dietLog = readDietLog((entry as Entry).meals);
-  const logged = logTotals(dietLog.items);
 
   // Sleep + exercise: all stats computed in code from the module logs.
   const recentRows = (recent ?? []) as {
@@ -131,9 +130,8 @@ export async function POST(request: Request) {
       ok: eff.leanGain != null,
       targetKcal: eff.leanGain,
       targetProtein: eff.protein,
-      loggedKcal: logged.kcal,
-      loggedProtein: logged.protein,
-      mealCount: dietLog.items.length,
+      loggedKcal: dietLog.kcal,
+      loggedProtein: dietLog.protein,
       waterMl: dietLog.waterMl,
       waterTargetMl: eff.waterMl,
     },

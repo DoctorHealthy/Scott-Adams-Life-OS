@@ -69,7 +69,6 @@ type DietNumbers = {
   targetProtein: number | null;
   loggedKcal: number;
   loggedProtein: number;
-  mealCount: number;
   waterMl: number;
   waterTargetMl: number | null;
 };
@@ -174,7 +173,6 @@ ${
 - Protein logged: ${diet.loggedProtein} g of ${diet.targetProtein ?? "not set"} g target (${
         diet.targetProtein != null ? diet.targetProtein - diet.loggedProtein : "?"
       } g under)
-- Meals and snacks logged: ${diet.mealCount}
 - Water: ${diet.waterMl} ml of ${diet.waterTargetMl ?? "not set"} ml target`
     : `- Calorie targets not computable (profile stats missing). Water: ${diet.waterMl} ml of ${diet.waterTargetMl ?? "not set"} ml. Do not guess the calorie numbers.`
 }

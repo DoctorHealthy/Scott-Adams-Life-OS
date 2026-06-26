@@ -47,3 +47,35 @@ If it helps, group the rows under a small "Morning" and "Evening" label (morning
 ## What we are deliberately NOT doing
 
 No wide multi-column cockpit with every control visible at once. We tried that and it overwhelmed. Calm and collapsed beats dense and complete. If in doubt, show less.
+
+---
+
+## v2.1 Refinements (apply these on top of v2)
+
+### Top card: cut the recitation
+- Remove the long static briefing paragraph ("Mark, Today hit your 10:30...") and the "Show today's plan" toggle. The plan already lives in the cards; reciting it daily is noise.
+- Keep the daily gem (the quote) as a small line, thinking-out-loud style.
+- Optionally one short dynamic line: today's single focus, derived from recent data, one line max. If it can't be made genuinely dynamic and useful, drop it and keep just the gem.
+- The real coaching is the evening review (already dynamic). Do not duplicate it in the morning.
+
+### Move the evening reflection into Mind
+- Take the evening reflection OUT of the Review modal.
+- Mind becomes the daily journal: a morning intention (one line) and an evening reflection with one or two light prompts ("What happened today?", "What did I do about it?"), plus the Private toggle, plus a link to the Mind playbook (vision and reframes).
+- The Review modal then shows ONLY the coach's output (verdict, the read, the one move, tomorrow). Tidy its controls to just Close and Re-run review. Save and Private move to Mind with the reflection.
+
+### Diet: quick manual entry first, meals optional
+- The primary Diet input is a calories field and a protein field, each with plus/minus steppers (for example +/- 100 kcal, +/- 10 g), prefilled with a sensible default so it never starts at zero (use yesterday's logged values, or a baseline if there's no prior day).
+- The meal menu becomes secondary and collapsed. Tapping a meal still adds to the totals, but I am not forced to use it. Most days I just bump the numbers.
+- Keep water and snacks.
+
+### Goals: on the Today page, visual, no separate page
+- Put goals on Today as a compact visual card, not a link to another page.
+- Show the year as four quarters in a horizontal split (Q1, Q2, Q3, Q4), current quarter highlighted. Each goal sits in its target quarter as a chip with a small progress bar and a one-word cue (the why).
+- Tap a goal to expand its detail inline (notes, milestones, progress) without leaving Today. Add a goal inline.
+- Progress derived in code from linked systems where possible, manual otherwise. Keep it compact; it should not dominate the page.
+
+### Row order (by the flow of the day)
+Order the system rows: Sleep, Morning & schedule, Training, Diet, Mind (reflection caps the day, so Mind sits last). The Goals card sits below the rows, then the Review and Ask buttons.
+
+### Button tidy
+Group related controls. Save and Private sit together. Never strand a checkbox between unrelated buttons.

@@ -16,7 +16,7 @@ import {
   type ExerciseConfig,
 } from "@/lib/exercise/exercise";
 import { sessionForDate } from "@/lib/today/plan";
-import { readDietLog, logTotals } from "@/lib/diet/log";
+import { readDietLog } from "@/lib/diet/log";
 import type { System } from "@/lib/types";
 
 export type BriefingRecent = {
@@ -131,7 +131,7 @@ export function computeBriefingSignals(args: {
   // Diet protein over the last 3 logged days that have meals.
   const proteinVals = sorted
     .filter((r) => r.date <= date)
-    .map((r) => logTotals(readDietLog(r.meals).items).protein)
+    .map((r) => readDietLog(r.meals).protein)
     .filter((p) => p > 0)
     .slice(0, 3);
   const proteinAvg = avg(proteinVals);

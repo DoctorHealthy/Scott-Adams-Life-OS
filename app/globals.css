@@ -2260,6 +2260,211 @@ textarea {
   flex-shrink: 0;
 }
 
+/* ---------- diet steppers ---------- */
+.stepper {
+  margin-bottom: 14px;
+}
+
+.stepper-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.stepper-sub {
+  font-size: 12px;
+}
+
+.stepper-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-btn {
+  width: auto;
+  flex-shrink: 0;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.step-btn:hover {
+  border-color: #3a3a40;
+}
+
+.step-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* ---------- Mind journal controls ---------- */
+.journal-prompts {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.journal-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+/* ---------- Goals quarter card ---------- */
+.quarter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+
+@media (max-width: 600px) {
+  .quarter-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.quarter-col {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 84px;
+}
+
+.quarter-col.current {
+  border-color: var(--accent);
+}
+
+.quarter-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.quarter-col.current .quarter-label {
+  color: var(--accent);
+}
+
+.quarter-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quarter-empty {
+  font-size: 13px;
+}
+
+.goal-chip {
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.goal-chip.on {
+  border-color: var(--accent);
+}
+
+.goal-chip-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.goal-chip-why {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.goal-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.goal-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.goal-editor {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.goal-progress-line {
+  margin-bottom: 10px;
+}
+
+.milestone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.milestone-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.milestone-check {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: #7ee29a;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.milestone-check.on {
+  border-color: #2c7a3f;
+  background: #102a16;
+}
+
+.milestone-text {
+  flex: 1 1 auto;
+  font-size: 14px;
+}
+
+.milestone-text.done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
 .today-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
