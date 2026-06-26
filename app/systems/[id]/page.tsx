@@ -5,11 +5,15 @@ import TopNav from "@/components/TopNav";
 import DietPlaybook from "./DietPlaybook";
 import SleepPlaybook from "./SleepPlaybook";
 import ExercisePlaybook from "./ExercisePlaybook";
+import MindPlaybook from "./MindPlaybook";
+import SchedulePlaybook from "./SchedulePlaybook";
 import GenericPlaybook from "./GenericPlaybook";
 import { computeTargets } from "@/lib/diet/targets";
 import { readDietConfig } from "@/lib/diet/config";
 import { readSleepConfig, readSleepLog } from "@/lib/sleep/sleep";
 import { readExerciseConfig, readExerciseLog } from "@/lib/exercise/exercise";
+import { readMindConfig } from "@/lib/mind/config";
+import { readScheduleConfig } from "@/lib/schedule/schedule";
 import type { System } from "@/lib/types";
 
 type ModuleLogs = { sleep?: unknown; exercise?: unknown };
@@ -97,6 +101,10 @@ export default async function PlaybookPage({
                 log: readExerciseLog(r.module_logs?.exercise),
               }))}
             />
+          ) : domain === "Imagination" ? (
+            <MindPlaybook config={readMindConfig(profile?.coaching_prefs)} />
+          ) : domain === "Flexible Schedule" ? (
+            <SchedulePlaybook config={readScheduleConfig(profile?.coaching_prefs)} />
           ) : (
             <GenericPlaybook system={sys} />
           )}

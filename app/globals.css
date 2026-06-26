@@ -1679,3 +1679,204 @@ textarea {
   border-color: #5a2526;
   color: #ff9a93;
 }
+
+/* ============================================================
+   Mind playbook: gem, reframe library
+   ============================================================ */
+.gem {
+  margin: 0;
+  border-left: 3px solid var(--accent);
+  padding: 2px 0 2px 16px;
+}
+
+.gem-text {
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.gem-compact .gem-text {
+  font-size: 15px;
+}
+
+.gem-source {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.gem-note {
+  color: var(--muted);
+}
+
+.reframe-group {
+  margin-top: 16px;
+}
+
+.reframe-cat {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.reframe-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.reframe-row:last-child {
+  border-bottom: none;
+}
+
+.reframe-text {
+  font-size: 14px;
+  line-height: 1.45;
+  min-width: 0;
+}
+
+.reframe-old {
+  color: var(--muted);
+}
+
+.reframe-arrow {
+  color: var(--muted);
+}
+
+.reframe-new {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.reframe-tag {
+  font-size: 11px;
+}
+
+.pin-btn {
+  flex-shrink: 0;
+  width: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 7px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.pin-btn:hover {
+  border-color: #3a3a40;
+}
+
+.pin-btn.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #2a2008;
+}
+
+/* ============================================================
+   Morning & schedule: Eisenhower matrix
+   ============================================================ */
+.eisen-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+@media (max-width: 640px) {
+  .eisen-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.eisen-quad {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tone-protect {
+  border-color: #2c7a3f;
+  background: #102a16;
+}
+
+.eisen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.eisen-title {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.eisen-action {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+}
+
+.tone-do .eisen-action {
+  color: var(--accent);
+}
+
+.tone-protect .eisen-action {
+  color: #7ee29a;
+}
+
+.tone-flag .eisen-action {
+  color: #ff9a93;
+}
+
+.eisen-sub {
+  font-size: 12px;
+  margin-top: -4px;
+}
+
+.eisen-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.eisen-empty {
+  font-size: 13px;
+  padding: 2px 0;
+}
+
+.eisen-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.eisen-input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.eisen-move {
+  width: auto;
+  flex-shrink: 0;
+  padding: 8px;
+  font-size: 13px;
+}

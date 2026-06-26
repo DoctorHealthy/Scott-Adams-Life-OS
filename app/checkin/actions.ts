@@ -6,8 +6,13 @@ import type { SystemStatus } from "@/lib/types";
 import type { DietLogValue } from "@/lib/diet/log";
 import type { SleepLog } from "@/lib/sleep/sleep";
 import type { ExerciseLog } from "@/lib/exercise/exercise";
+import type { MindLog } from "@/lib/mind/config";
 
-export type ModuleLogs = { sleep: SleepLog; exercise: ExerciseLog };
+export type ModuleLogs = {
+  sleep: SleepLog;
+  exercise: ExerciseLog;
+  mind: MindLog;
+};
 
 export type EntryInput = {
   date: string;

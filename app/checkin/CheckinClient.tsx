@@ -11,6 +11,7 @@ import CoachReview from "@/components/CoachReview";
 import DietLog from "@/components/DietLog";
 import SleepLogCard from "@/components/SleepLog";
 import ExerciseLogCard from "@/components/ExerciseLog";
+import MindLogCard from "@/components/MindLog";
 import type { DietMeal } from "@/lib/diet/meals";
 import type { EffectiveTargets } from "@/lib/diet/config";
 import { readDietLog, emptyDietLog, type DietLogValue } from "@/lib/diet/log";
@@ -27,6 +28,7 @@ import {
   type ExerciseConfig,
   type ExerciseLog,
 } from "@/lib/exercise/exercise";
+import { readMindLog, emptyMindLog, type MindLog } from "@/lib/mind/config";
 
 const STATUSES: SystemStatus[] = ["done", "floor", "skip"];
 
@@ -56,6 +58,7 @@ export default function CheckinClient({
   const [dietLog, setDietLog] = useState<DietLogValue>(emptyDietLog());
   const [sleepLog, setSleepLog] = useState<SleepLog>(emptySleepLog());
   const [exerciseLog, setExerciseLog] = useState<ExerciseLog>(emptyExerciseLog());
+  const [mindLog, setMindLog] = useState<MindLog>(emptyMindLog());
   const [oneLine, setOneLine] = useState("");
   const [reflection, setReflection] = useState("");
   const [nextAction, setNextAction] = useState("");
@@ -97,6 +100,7 @@ export default function CheckinClient({
       const ml = (data?.module_logs ?? {}) as {
         sleep?: unknown;
         exercise?: unknown;
+        mind?: unknown;
       };
       // Pre-fill wake/bed with the target times so they are not typed from
       // scratch each day. Editable; the saved value is whatever shows here.
@@ -107,6 +111,7 @@ export default function CheckinClient({
         bed: sl.bed ?? defaultBed,
       });
       setExerciseLog(readExerciseLog(ml.exercise));
+      setMindLog(readMindLog(ml.mind));
       setOneLine(data?.one_line ?? "");
       setReflection(data?.reflection ?? "");
       setNextAction(data?.tomorrow_next_action ?? "");
@@ -154,7 +159,7 @@ export default function CheckinClient({
       energy_1_10: energy,
       system_statuses: statuses,
       meals: dietLog,
-      module_logs: { sleep: sleepLog, exercise: exerciseLog },
+      module_logs: { sleep: sleepLog, exercise: exerciseLog, mind: mindLog },
       one_line: oneLine,
       reflection,
       tomorrow_next_action: nextAction,
@@ -359,6 +364,21 @@ export default function CheckinClient({
               value={dietLog}
               onChange={(v) => mark(setDietLog)(v)}
               targets={targets}
+            />
+          </div>
+
+          {/* Mind: today's gem + optional morning intention */}
+          <div className="card">
+            <div className="block-head">
+              <span className="block-title">Mind</span>
+              <Link href="/systems" className="muted" style={{ fontSize: 12 }}>
+                Vision and reframes in the Mind playbook
+              </Link>
+            </div>
+            <MindLogCard
+              date={date}
+              value={mindLog}
+              onChange={(v) => mark(setMindLog)(v)}
             />
           </div>
 
