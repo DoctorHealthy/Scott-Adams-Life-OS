@@ -1983,15 +1983,26 @@ textarea {
   align-items: start;
 }
 
+/* Masonry-style: cards flow down two columns and fill vertical gaps, all
+   top-aligned. CSS multi-column is the cross-browser way (grid masonry is not
+   yet supported in stable browsers). */
 .sys-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  align-items: start;
+  column-count: 2;
+  column-gap: 14px;
 }
 
+.sys-grid > .card {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  margin: 0 0 14px;
+  /* a column item is inline-block under the hood; keep it full width */
+  display: block;
+  width: 100%;
+}
+
+/* No column spanning in the masonry flow; treat as a normal card. */
 .sys-card-wide {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .sys-card-head {
@@ -2064,7 +2075,7 @@ textarea {
 
 @media (max-width: 600px) {
   .sys-grid {
-    grid-template-columns: 1fr;
+    column-count: 1;
   }
 }
 
