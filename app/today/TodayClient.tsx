@@ -197,34 +197,46 @@ export default function TodayClient({
   }
 
   return (
-    <div className="stack">
-      <div>
-        <div className="eyebrow">Today</div>
-        <h1 style={{ marginTop: 6 }}>{prettyDate(date)}</h1>
-      </div>
-
-      {error ? <div className="alert alert-error">{error}</div> : null}
-
-      <Nudges sleepConfig={sleepConfig} sleepLog={sleepLog} dietWindow={dietWindow} />
-
-      {/* Coach briefing + the code-assembled plan + intention */}
-      <div className="card">
-        <div className="block-head">
-          <span className="block-title">Your briefing</span>
+    <div className="today-grid">
+      <div className="today-main stack">
+        <div>
+          <div className="eyebrow">Today</div>
+          <h1 style={{ marginTop: 6 }}>{prettyDate(date)}</h1>
         </div>
-        <CoachBriefing date={date} />
-        {plan ? <PlanCard plan={plan} /> : null}
-        <div className="field" style={{ marginTop: 16, marginBottom: 0 }}>
-          <label>Today&apos;s intention (one line, optional)</label>
-          <input
-            value={mindLog.intention ?? ""}
-            onChange={(e) =>
-              mark(setMindLog)({ intention: e.target.value || null })
-            }
-            placeholder="Set the day's posture"
-          />
+
+        {error ? <div className="alert alert-error">{error}</div> : null}
+
+        <Nudges sleepConfig={sleepConfig} sleepLog={sleepLog} dietWindow={dietWindow} />
+
+        {/* Coach briefing narrative */}
+        <div className="card">
+          <div className="block-head">
+            <span className="block-title">Your briefing</span>
+          </div>
+          <CoachBriefing date={date} />
         </div>
-      </div>
+
+        {/* Code-assembled plan, clean labeled cards */}
+        {plan ? (
+          <div>
+            <div className="section-label">Today&apos;s plan</div>
+            <PlanCard plan={plan} />
+          </div>
+        ) : null}
+
+        {/* Intention */}
+        <div className="card">
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>Today&apos;s intention (one line, optional)</label>
+            <input
+              value={mindLog.intention ?? ""}
+              onChange={(e) =>
+                mark(setMindLog)({ intention: e.target.value || null })
+              }
+              placeholder="Set the day's posture"
+            />
+          </div>
+        </div>
 
       {/* Energy */}
       <div className="card">
@@ -384,22 +396,24 @@ export default function TodayClient({
           <span>Private. Only you can see this.</span>
         </label>
       </div>
-
-      <CoachReview
-        key={date}
-        date={date}
-        enabled={entryExists && !dirty}
-        autoRun={isEvening}
-        hint={
-          !entryExists
-            ? "Save today first, then get the review."
-            : "Save your latest changes, then re-run the review."
-        }
-      />
-
-      <div>
-        <AskCoach />
       </div>
+
+      <aside className="today-side">
+        <div className="today-side-sticky">
+          <CoachReview
+            key={date}
+            date={date}
+            enabled={entryExists && !dirty}
+            autoRun={isEvening}
+            hint={
+              !entryExists
+                ? "Save today first, then get the review."
+                : "Save your latest changes, then re-run the review."
+            }
+          />
+          <AskCoach />
+        </div>
+      </aside>
     </div>
   );
 }

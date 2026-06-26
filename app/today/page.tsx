@@ -43,7 +43,7 @@ export default async function TodayPage() {
   return (
     <div className="shell">
       <TopNav email={user.email} />
-      <main className="container container-tight">
+      <main className="container container-today">
         <TodayClient
           userId={user.id}
           systems={(systems as System[]) ?? []}

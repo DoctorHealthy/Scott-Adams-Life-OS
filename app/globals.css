@@ -1905,42 +1905,118 @@ textarea {
   cursor: pointer;
 }
 
-/* plan (code-assembled) */
-.plan {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+/* ---------- Today: two-column layout ---------- */
+.container-today {
+  max-width: 1200px;
+}
+
+.today-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.today-main {
+  min-width: 0;
+}
+
+.today-side-sticky {
+  position: sticky;
+  top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
-.plan-row {
+@media (max-width: 900px) {
+  .today-grid {
+    grid-template-columns: 1fr;
+  }
+  .today-side-sticky {
+    position: static;
+  }
+}
+
+/* ---------- plan (code-assembled, labeled cards) ---------- */
+.plan {
   display: flex;
+  flex-direction: column;
   gap: 12px;
-  font-size: 15px;
 }
 
-.plan-k {
+.plan-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.plan-card,
+.plan-list-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.plan-card-k {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
   color: var(--muted);
-  min-width: 92px;
-  flex-shrink: 0;
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
-.plan-block {
+.plan-card-v {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.plan-ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.plan-list {
-  margin: 0;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   font-size: 14px;
   line-height: 1.45;
+}
+
+.plan-meals {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-meal-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.plan-meal-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.plan-meal-row:first-child {
+  padding-top: 0;
+}
+
+.plan-meal-name {
+  min-width: 0;
+}
+
+.plan-meal-macros {
+  color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* nudges */
