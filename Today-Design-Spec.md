@@ -1,83 +1,49 @@
-# Today Dashboard, Coach, and Goals: Design Spec
+# Today: Simple, Calm, Progressive Disclosure (v2)
 
-Claude Code: build the Today experience to match this exactly. The current version dumps a static plan as a vertical text list and wastes the screen. This replaces that. Match the clean Diet playbook styling (cards, spacing, labels separated from values).
+This replaces the previous dense dashboard. The old version showed every control at once and overwhelmed. This is the opposite, and it follows how the best apps actually work.
 
-## 1. Layout: a real dashboard that uses the full width
+Grounding (real patterns): Fitbit cut its main screen to three metrics and saw about 30% more daily active users. Streaks lets you tap habits off in seconds. The consistent rule in habit and wellness apps is progressive disclosure: show only what matters, hide the rest behind a tap. This is Adams' "simplify, don't optimize," finally applied.
 
-Stop using a single narrow centered column. Desktop is a two-zone dashboard, responsive to one column on mobile.
+Match the clean Diet card styling for any expanded content.
 
-- **Header (full width):** the date, and the energy control as the headline (energy is the master metric, so make it prominent: a large number or ring you set 1 to 10). Optionally the day's one-line focus next to it.
-- **Main area (left, about two thirds):** a responsive grid of cards (2 across on desktop, 1 on mobile). These are the system cards plus the goals card.
-- **Coach rail (right, about one third, sticky on scroll):** the coach. Briefing, gem, nudges, Review my day, Ask the coach.
-- **Mobile/narrow:** single column; the coach rail drops below the main grid.
+## The default Today view (calm, single column)
 
-No lonely centered column, no large empty side margins.
+A single comfortable centered column, not a wide multi-column cockpit. When I open Today I see only:
 
-## 2. System cards (the main grid)
+1. **Header:** the date with day navigation (a left and right arrow to move to past or other days and edit them, plus a "Today" button to jump back), the energy headline (the one master metric, set with a tap or slider), and today's one-line focus.
+2. **The coach briefing:** one short, calm card. 2 to 4 sentences (dynamic, rules below), ending in the single focus for the day. A small "Show today's plan" toggle expands the full plan (sleep target, due session, meals, targets) only if I want it. Collapsed by default.
+3. **The systems as a checklist of collapsed rows.** Each system is one row showing its name, an at-a-glance status (a dot or check: done / floor / skip / not yet), and one glance value where useful (e.g. Diet shows 1750 / 3000 ml). Tapping a row expands it inline to reveal that system's quick log (the toggles, meals, water). Collapsed by default, so the default screen is about five tidy rows, not five walls of controls.
+4. **A compact Goals row** that links to the Goals page (built next).
+5. **Two buttons: "Review my day" and "Ask the coach."** The evening review and the ask box open on demand in a panel or modal. They are NOT an always-open column of text.
 
-Each of the five systems is one interactive card. The card merges the plan and the logging, so there is no separate "Today's plan" list and no separate check-in. Each card shows:
+That is the entire default screen: energy, a short briefing, five rows, a goals row, two buttons. Calm.
 
-- The system name and an at-a-glance status (done / floor / skip, or a small progress indicator).
-- Today's plan for that system, pulled from code, with labels clearly separated from values. Never render "SleepWake 10:30". Render "Sleep" as a heading, then "Wake 10:30 · Bed 02:30 · Step 2".
-- The logging controls inline:
-  - Sleep card: wake/bed (prefilled with targets), morning light toggle, wind-down toggle.
-  - Training card: today's session from the rotation, warm-up toggle, session done + type, ankle prehab toggle.
-  - Diet card: targets, today's meals as tap-to-log, water, quick-add snack, running totals vs target (code).
-  - Mind card: today's intention input (one line), and a reframe if the coach flagged one.
-  - Schedule card: the morning block, the slot-when-free list, today's fixed rocks.
-- A small "Open playbook" link for depth and editing (the playbook is the setup layer).
+## Logging is fast and optional
 
-Cards have consistent padding and clear hierarchy. This is the core fix: five clean interactive cards in a grid, not a vertical wall.
+- Tap a row to expand, tick what you did, collapse. Seconds, not a form.
+- Nothing is required. A whole system can be marked done with one tap on its status control, without expanding.
+- Energy is the one thing always visible and always one tap to set.
 
-## 3. The dynamic briefing (top of the coach rail)
+## Day navigation (bring this back)
 
-The briefing must be different every day. It is NOT a recitation of static targets (those live in the cards). It is a short, fresh coaching note built from real signals.
+The left/right day arrows and a "Today" button return. I can move to a previous day and edit that entry. This existed before the refactor and I want it back.
 
-Feed the briefing model these code-computed signals: yesterday's energy and what slipped, the 7-day energy trend, the current sleep-shift step and last wake drift, which training session is due today, whether today is a German day (Tue/Fri), any trend that is off (protein under target lately, sessions behind the weekly count, sleep drifting later), and the single highest-leverage focus for today.
+## The coach: on demand, not a wall
 
-Rules:
-- 2 to 4 sentences, coach voice (see coach-persona.md).
-- Reference what actually changed or what is off. Tie yesterday to today.
-- End with one clear focus for the day, not a list.
-- Never invent numbers; read them from the signals provided.
+- Morning: the short briefing card is the only always-visible coach text.
+- Evening: "Review my day" opens the review (verdict, the read, the one move, tomorrow's plan) in a panel or modal, with the reflection input there. It can still auto-open in the evening, but as a panel, not a permanent column.
+- "Ask the coach" opens a quick question box on demand.
+- The daily gem is a small line (in the briefing card footer), not a big block.
 
-Good briefing (dynamic):
-"Energy slid to 5 yesterday on a 2:40 bed, second late night this week. That's the pattern to break. You're on step 2 of the shift, so 10:15 today, no sleeping in. Strength-endurance is up and you're two sessions behind your weekly four, so this one counts. Focus: lights off and book in hand by 1:45."
+## Light time-phasing (optional, keep subtle)
 
-Bad briefing (static, what we have now, do not do this):
-"Hit your 10:30 wake and 02:30 bed. Get morning light, run the Ondra warm-up, eat 3350 calories..." Same every day.
+If it helps, group the rows under a small "Morning" and "Evening" label (morning: sleep, light, warm-up, intention; evening: training, diet, reflection). Keep it a light grouping, not two heavy sections.
 
-## 4. Coach rail contents (right column, sticky)
+## Keep unchanged from the working version
 
-In order:
-1. The dynamic briefing.
-2. Today's gem (varies daily, honest attribution).
-3. Time-aware nudges (computed from the clock and targets: morning-light window, wind-down soon, pull dinner earlier).
-4. Review my day button (evening, auto-runs after a set hour). Output in the clean format: verdict, the read across all systems, the one move, tomorrow's plan, plus a reflection input.
-5. Ask the coach button (quick question anytime).
+- **The dynamic briefing rules:** built from code-computed signals (yesterday's energy and what slipped, the 7-day trend, the sleep-shift step and last wake drift, today's due session, whether it is a German day, any off-track trend like protein under or sessions behind), and it ends with one focus. It changes daily and never just recites static targets.
+- **Code does all numbers:** the plan, targets, totals, streaks, nudge timing, goal progress, the sleep step. The AI only narrates the briefing, the review, and the ask. It never invents numbers.
 
-## 5. Goals: a quarter calendar (new)
+## What we are deliberately NOT doing
 
-A Goals view, its own page, plus a compact card on the Today grid. This is NOT the Eisenhower matrix; keep Eisenhower separate in the Schedule playbook for task triage. Goals are direction and progress over time.
-
-- **Quarter calendar:** the year laid out as quarters (Q1 to Q4), as columns or a horizontal timeline. Goals sit in the quarter they are targeted for.
-- **Each goal:** title, a why (tie to my vision), target quarter, a progress bar, notes, and optional milestones.
-- **Progress is derived in code where a goal links to a system:** a wake-time goal reads the sleep-shift step, a strength/muscle goal reads sessions-per-week and weight, a diet goal reads adherence. Goals with no system link use manual status or milestones.
-- **Interactive:** add a goal, move it between quarters, update progress and notes, mark milestones.
-- **On Today:** a compact Goals card in the grid showing the top 2 to 3 goals with progress bars, linking to the full quarter calendar.
-- The coach occasionally ties the day to a goal and flags a goal that has not moved in a while.
-
-Keep the chain clear: Vision (pinned in Mind) leads to Goals (direction and progress) leads to Eisenhower tasks (triage) leads to daily systems (execution).
-
-## 6. Visual standards (apply everywhere)
-
-- Use the full width. Grids, not a single column.
-- Cards with consistent padding; labels always separated from values.
-- Match the Diet playbook's card style, spacing, and typography.
-- No walls of text. Break content into cards and short blocks.
-- The page should read like a clean dashboard, not a form.
-
-## 7. What stays in code vs the AI
-
-- Code: the whole plan, all targets and totals, streaks, nudge timing, goal progress, the quarter math, the sleep-shift step.
-- AI: the briefing narrative, the daily review, the reframe wording, answers to Ask the coach. The AI reads numbers from code and never computes or invents them.
+No wide multi-column cockpit with every control visible at once. We tried that and it overwhelmed. Calm and collapsed beats dense and complete. If in doubt, show less.

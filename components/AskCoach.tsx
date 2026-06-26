@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-export default function AskCoach() {
-  const [open, setOpen] = useState(false);
+export default function AskCoach({ embedded = false }: { embedded?: boolean }) {
+  const [open, setOpen] = useState(embedded);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState<string | null>(null);
@@ -31,27 +31,17 @@ export default function AskCoach() {
 
   if (!open) {
     return (
-      <button className="btn btn-ghost btn-auto" onClick={() => setOpen(true)}>
+      <button className="btn btn-ghost" onClick={() => setOpen(true)}>
         Ask the coach
       </button>
     );
   }
 
-  return (
-    <div className="card">
-      <div className="block-head">
-        <span className="block-title">Ask the coach</span>
-        <button
-          className="btn btn-ghost btn-auto"
-          onClick={() => setOpen(false)}
-          disabled={loading}
-        >
-          Close
-        </button>
-      </div>
+  const form = (
+    <>
       <div className="field">
         <textarea
-          rows={2}
+          rows={3}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="A quick question for the coach"
@@ -67,6 +57,25 @@ export default function AskCoach() {
         </div>
       ) : null}
       {text ? <div className="coach-output">{text}</div> : null}
+    </>
+  );
+
+  // Embedded (inside a modal): no card chrome, no open/close button.
+  if (embedded) return <div>{form}</div>;
+
+  return (
+    <div className="card">
+      <div className="block-head">
+        <span className="block-title">Ask the coach</span>
+        <button
+          className="btn btn-ghost btn-auto"
+          onClick={() => setOpen(false)}
+          disabled={loading}
+        >
+          Close
+        </button>
+      </div>
+      {form}
     </div>
   );
 }

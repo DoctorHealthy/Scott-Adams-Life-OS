@@ -1,22 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { localDateStr, prettyDate, STATUS_META } from "@/lib/constants";
+import { addDays, localDateStr, prettyDate, STATUS_META } from "@/lib/constants";
 import type { System, SystemStatus } from "@/lib/types";
 import { saveEntry } from "@/app/checkin/actions";
 import CoachReview from "@/components/CoachReview";
 import CoachBriefing from "@/components/CoachBriefing";
-import Nudges from "@/components/Nudges";
 import AskCoach from "@/components/AskCoach";
+import Modal from "@/components/Modal";
 import DietLog from "@/components/DietLog";
 import SleepLogCard from "@/components/SleepLog";
 import ExerciseLogCard from "@/components/ExerciseLog";
 import type { DietMeal } from "@/lib/diet/meals";
-import type { EffectiveTargets, DietWindow } from "@/lib/diet/config";
-import { readDietLog, emptyDietLog, type DietLogValue } from "@/lib/diet/log";
+import type { EffectiveTargets } from "@/lib/diet/config";
+import { readDietLog, emptyDietLog, logTotals, type DietLogValue } from "@/lib/diet/log";
 import {
   readSleepLog,
   emptySleepLog,
@@ -46,7 +46,6 @@ export default function TodayClient({
   sleepConfig,
   exerciseConfig,
   schedule,
-  dietWindow,
 }: {
   userId: string;
   systems: System[];
@@ -55,11 +54,11 @@ export default function TodayClient({
   sleepConfig: SleepConfig;
   exerciseConfig: ExerciseConfig;
   schedule: ScheduleConfig;
-  dietWindow: DietWindow;
 }) {
   const supabase = createClient();
   const router = useRouter();
 
+  const [today] = useState(() => localDateStr());
   const [date, setDate] = useState<string | null>(null);
   const [isEvening, setIsEvening] = useState(false);
 
@@ -78,6 +77,12 @@ export default function TodayClient({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [entryExists, setEntryExists] = useState(false);
+
+  // UI state
+  const [openRows, setOpenRows] = useState<Record<string, boolean>>({});
+  const [showPlan, setShowPlan] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
 
   const defaultWake = sleepConfig.currentWake;
   const defaultBed = targetBedtime(sleepConfig);
@@ -149,6 +154,10 @@ export default function TodayClient({
     setSaved(false);
   }
 
+  function toggleRow(key: string) {
+    setOpenRows((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
   async function save() {
     if (!date) return;
     setSaving(true);
@@ -183,28 +192,24 @@ export default function TodayClient({
     );
   }
 
-  const sysByDomain = (d: string) =>
-    systems.find((s) => s.domain === d) ?? null;
+  const isToday = date === today;
+  const tag = isToday ? "Today" : date === addDays(today, -1) ? "Yesterday" : null;
+
+  const sysByDomain = (d: string) => systems.find((s) => s.domain === d) ?? null;
   const sleepSys = sysByDomain("Sleep");
   const exSys = sysByDomain("Exercise");
   const dietSys = sysByDomain("Diet");
   const mindSys = sysByDomain("Imagination");
   const schedSys = sysByDomain("Flexible Schedule");
 
-  const bigFive = new Set([
-    "Sleep",
-    "Exercise",
-    "Diet",
-    "Imagination",
-    "Flexible Schedule",
-  ]);
-  const otherSystems = systems.filter((s) => !bigFive.has(s.domain ?? ""));
-
   const gem = gemForDate(date);
+  const dietTotals = logTotals(dietLog.items);
+  const sessionDue = sessionForDate(exerciseConfig, date);
 
-  function StatusButtons({ sysId }: { sysId?: string }) {
-    if (!sysId) return null;
-    return (
+  // Plain helpers that RETURN JSX (not components used as <Row/>), so the
+  // expanded inputs keep focus across re-renders instead of remounting.
+  const statusButtons = (sysId?: string) =>
+    sysId ? (
       <div className="status-group">
         {STATUSES.map((st) => (
           <button
@@ -219,37 +224,73 @@ export default function TodayClient({
           </button>
         ))}
       </div>
-    );
-  }
+    ) : null;
 
-  function playbookHref(sys: System | null) {
-    return sys ? `/systems/${sys.id}` : "/systems";
-  }
+  const renderRow = (
+    rowKey: string,
+    title: string,
+    glance: string | undefined,
+    sysId: string | undefined,
+    body: ReactNode
+  ) => {
+    const open = !!openRows[rowKey];
+    return (
+      <div className={`sysrow${open ? " open" : ""}`} key={rowKey}>
+        <div className="sysrow-head">
+          <button className="sysrow-main" onClick={() => toggleRow(rowKey)}>
+            <span className="sysrow-chevron">{open ? "−" : "+"}</span>
+            <span className="sysrow-name">{title}</span>
+            {glance ? <span className="sysrow-glance">{glance}</span> : null}
+          </button>
+          {statusButtons(sysId)}
+        </div>
+        {open ? <div className="sysrow-body">{body}</div> : null}
+      </div>
+    );
+  };
 
   return (
-    <div className="today2">
-      {/* Header: date + energy headline */}
+    <div className="today-calm">
+      {/* Header */}
       <div className="card">
-        <div className="today-head-row">
+        <div className="dayhead">
           <div>
-            <div className="eyebrow">Today</div>
-            <h1 style={{ marginTop: 6 }}>{prettyDate(date)}</h1>
+            {tag ? <div className="eyebrow">{tag}</div> : null}
+            <h1 style={{ marginTop: tag ? 4 : 0 }}>{prettyDate(date)}</h1>
           </div>
-          {mindLog.intention ? (
-            <div className="today-focus">
-              <span className="today-focus-k">Focus</span>
-              <span className="today-focus-v">{mindLog.intention}</span>
-            </div>
-          ) : null}
+          <div className="date-nav">
+            <button
+              className="btn btn-ghost btn-auto"
+              onClick={() => setDate(addDays(date, -1))}
+              title="Previous day"
+            >
+              &larr;
+            </button>
+            <button
+              className="btn btn-ghost btn-auto"
+              onClick={() => setDate(today)}
+              disabled={isToday}
+            >
+              Today
+            </button>
+            <button
+              className="btn btn-ghost btn-auto"
+              onClick={() => setDate(addDays(date, 1))}
+              disabled={isToday}
+              title={isToday ? "Can't log the future" : "Next day"}
+            >
+              &rarr;
+            </button>
+          </div>
         </div>
 
-        <div className="energy-hero">
-          <div className="energy-hero-num">
+        <div className="energy-line">
+          <div className="energy-num">
             {energy != null ? energy : "--"}
-            <span className="energy-hero-max">/10</span>
+            <span className="energy-num-max">/10</span>
           </div>
-          <div className="energy-hero-controls">
-            <div className="energy-label">Energy, the master metric</div>
+          <div className="energy-line-controls">
+            <div className="energy-label">Energy</div>
             <input
               className="energy-slider"
               type="range"
@@ -259,97 +300,117 @@ export default function TodayClient({
               value={energy ?? 5}
               onChange={(e) => mark(setEnergy)(Number(e.target.value))}
             />
-            <div className="energy-scale">
-              <span>1 drained</span>
-              <span>10 charged</span>
-            </div>
-            {energy == null ? (
-              <button
-                className="btn btn-ghost btn-auto"
-                style={{ marginTop: 8 }}
-                onClick={() => mark(setEnergy)(5)}
-              >
-                Set energy
-              </button>
-            ) : null}
           </div>
         </div>
+
+        {mindLog.intention ? (
+          <div className="focus-line">
+            <span className="focus-k">Focus</span>
+            <span>{mindLog.intention}</span>
+          </div>
+        ) : null}
       </div>
 
       {error ? <div className="alert alert-error">{error}</div> : null}
 
-      <div className="today-cols">
-        {/* Main grid of system cards */}
-        <div className="sys-grid">
-          {/* Sleep */}
-          <div className="card">
-            <div className="sys-card-head">
-              <span className="block-title">Sleep</span>
-              <StatusButtons sysId={sleepSys?.id} />
+      {/* Briefing */}
+      <div className="card">
+        <CoachBriefing date={date} />
+        <div className="gem-line">
+          &ldquo;{gem.text}&rdquo; <span className="muted">{gem.source}</span>
+        </div>
+        <button
+          className="link-btn"
+          style={{ marginTop: 12 }}
+          onClick={() => setShowPlan((s) => !s)}
+        >
+          {showPlan ? "Hide today's plan" : "Show today's plan"}
+        </button>
+        {showPlan ? (
+          <div className="plan-summary">
+            <div className="plan-sum-row">
+              <span className="plan-sum-k">Sleep</span>
+              <span>
+                Wake {sleepConfig.currentWake} &middot; bed {targetBedtime(sleepConfig)}{" "}
+                &middot; step {stepNumber(sleepConfig)}
+              </span>
             </div>
-            <div className="sys-plan">
-              Wake {sleepConfig.currentWake} &middot; Bed {targetBedtime(sleepConfig)}{" "}
-              &middot; Step {stepNumber(sleepConfig)}
+            <div className="plan-sum-row">
+              <span className="plan-sum-k">Session</span>
+              <span>{sessionDue}</span>
             </div>
+            <div className="plan-sum-row">
+              <span className="plan-sum-k">Targets</span>
+              <span>
+                {targets.leanGain ?? "--"} kcal &middot; {targets.protein ?? "--"} g
+                protein &middot; {targets.waterMl ?? "--"} ml water
+              </span>
+            </div>
+            {catalog.length ? (
+              <div className="plan-sum-row">
+                <span className="plan-sum-k">Meals</span>
+                <span>{catalog.map((m) => m.name).join(", ")}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Systems checklist */}
+      <div className="syslist">
+        {renderRow(
+          "sleep",
+          "Sleep",
+          `Wake ${sleepConfig.currentWake}`,
+          sleepSys?.id,
+          <>
             <SleepLogCard
               config={sleepConfig}
               value={sleepLog}
               onChange={(v) => mark(setSleepLog)(v)}
             />
-            <div className="sys-card-foot">
-              <Link href={playbookHref(sleepSys)} className="link">
-                Open playbook
-              </Link>
-            </div>
-          </div>
+            <RowFoot sys={sleepSys} />
+          </>
+        )}
 
-          {/* Training */}
-          <div className="card">
-            <div className="sys-card-head">
-              <span className="block-title">Training</span>
-              <StatusButtons sysId={exSys?.id} />
-            </div>
-            <div className="sys-plan">
-              Today: {sessionForDate(exerciseConfig, date)}
-            </div>
+        {renderRow(
+          "training",
+          "Training",
+          sessionDue,
+          exSys?.id,
+          <>
             <ExerciseLogCard
               config={exerciseConfig}
               value={exerciseLog}
               onChange={(v) => mark(setExerciseLog)(v)}
             />
-            <div className="sys-card-foot">
-              <Link href={playbookHref(exSys)} className="link">
-                Open playbook
-              </Link>
-            </div>
-          </div>
+            <RowFoot sys={exSys} />
+          </>
+        )}
 
-          {/* Diet */}
-          <div className="card">
-            <div className="sys-card-head">
-              <span className="block-title">Diet</span>
-              <StatusButtons sysId={dietSys?.id} />
-            </div>
+        {renderRow(
+          "diet",
+          "Diet",
+          `${dietTotals.kcal} / ${targets.leanGain ?? "--"} kcal`,
+          dietSys?.id,
+          <>
             <DietLog
               catalog={catalog}
               value={dietLog}
               onChange={(v) => mark(setDietLog)(v)}
               targets={targets}
             />
-            <div className="sys-card-foot">
-              <Link href={playbookHref(dietSys)} className="link">
-                Open playbook
-              </Link>
-            </div>
-          </div>
+            <RowFoot sys={dietSys} />
+          </>
+        )}
 
-          {/* Mind */}
-          <div className="card">
-            <div className="sys-card-head">
-              <span className="block-title">Mind</span>
-              <StatusButtons sysId={mindSys?.id} />
-            </div>
-            <div className="field" style={{ marginBottom: 10 }}>
+        {renderRow(
+          "mind",
+          "Mind",
+          mindLog.intention ? "intention set" : undefined,
+          mindSys?.id,
+          <>
+            <div className="field" style={{ marginBottom: 0 }}>
               <label>Today&apos;s intention (one line, optional)</label>
               <input
                 value={mindLog.intention ?? ""}
@@ -359,19 +420,16 @@ export default function TodayClient({
                 placeholder="Set the day's posture"
               />
             </div>
-            <div className="sys-card-foot">
-              <Link href={playbookHref(mindSys)} className="link">
-                Vision and reframes
-              </Link>
-            </div>
-          </div>
+            <RowFoot sys={mindSys} label="Vision and reframes" />
+          </>
+        )}
 
-          {/* Schedule */}
-          <div className="card sys-card-wide">
-            <div className="sys-card-head">
-              <span className="block-title">Morning &amp; schedule</span>
-              <StatusButtons sysId={schedSys?.id} />
-            </div>
+        {renderRow(
+          "schedule",
+          "Morning & schedule",
+          undefined,
+          schedSys?.id,
+          <>
             <div className="sched-cols">
               <div>
                 <div className="sched-k">Morning block</div>
@@ -391,7 +449,7 @@ export default function TodayClient({
                   </ul>
                 ) : (
                   <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                    Nothing queued. Add pull-tasks in the playbook.
+                    Nothing queued.
                   </p>
                 )}
               </div>
@@ -410,104 +468,93 @@ export default function TodayClient({
                 )}
               </div>
             </div>
-            <div className="sys-card-foot">
-              <Link href={playbookHref(schedSys)} className="link">
-                Open playbook
-              </Link>
-            </div>
-          </div>
+            <RowFoot sys={schedSys} />
+          </>
+        )}
+      </div>
 
-          {/* Any custom (non Big Five) active systems */}
-          {otherSystems.map((s) => (
-            <div className="card" key={s.id}>
-              <div className="sys-card-head">
-                <span className="block-title">{s.name}</span>
-                <StatusButtons sysId={s.id} />
-              </div>
-              {s.rule ? <div className="sys-plan">{s.rule}</div> : null}
-              <div className="sys-card-foot">
-                <Link href={`/systems/${s.id}`} className="link">
-                  Open playbook
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Goals row (full board built next) */}
+      <Link href="/goals" className="goals-row card">
+        <span className="block-title">Goals</span>
+        <span className="muted">Direction and progress &rarr;</span>
+      </Link>
 
-        {/* Coach rail */}
-        <aside className="today-rail">
-          <div className="today-rail-sticky">
-            <div className="card">
-              <div className="block-head">
-                <span className="block-title">Your briefing</span>
-              </div>
-              <CoachBriefing date={date} />
-            </div>
-
-            <div className="card">
-              <div className="eyebrow" style={{ marginBottom: 10 }}>
-                Gem of the day
-              </div>
-              <blockquote className="gem gem-compact">
-                <p className="gem-text">{gem.text}</p>
-                <footer className="gem-source">
-                  {gem.source}
-                  {gem.note ? <span className="gem-note"> ({gem.note})</span> : null}
-                </footer>
-              </blockquote>
-            </div>
-
-            <Nudges
-              sleepConfig={sleepConfig}
-              sleepLog={sleepLog}
-              dietWindow={dietWindow}
-            />
-
-            <div className="card">
-              <div className="field" style={{ marginBottom: 0 }}>
-                <label>Evening reflection</label>
-                <textarea
-                  rows={3}
-                  value={reflection}
-                  onChange={(e) => mark(setReflection)(e.target.value)}
-                  placeholder="What lifted your energy, what drained it"
-                />
-              </div>
-              <label className="check-row" style={{ marginTop: 10 }}>
-                <input
-                  type="checkbox"
-                  checked={isPrivate}
-                  onChange={(e) => mark(setIsPrivate)(e.target.checked)}
-                />
-                <span>Private. Only you can see this.</span>
-              </label>
-            </div>
-
-            <CoachReview
-              key={date}
-              date={date}
-              enabled={entryExists && !dirty}
-              autoRun={isEvening}
-              hint={
-                !entryExists
-                  ? "Save today first, then get the review."
-                  : "Save your latest changes, then re-run the review."
-              }
-            />
-
-            <AskCoach />
-          </div>
-        </aside>
+      {/* Actions */}
+      <div className="today-actions">
+        <button className="btn btn-primary" onClick={() => setReviewOpen(true)}>
+          Review my day{isEvening ? " (ready)" : ""}
+        </button>
+        <button className="btn" onClick={() => setAskOpen(true)}>
+          Ask the coach
+        </button>
       </div>
 
       <div className="save-bar">
         <button className="btn btn-primary btn-auto" onClick={save} disabled={saving}>
-          {saving ? "Saving..." : "Save today"}
+          {saving ? "Saving..." : "Save day"}
         </button>
         <span className="save-status muted">
           {saved && !dirty ? "Saved." : dirty ? "Unsaved changes." : "Up to date."}
         </span>
       </div>
+
+      {reviewOpen ? (
+        <Modal title="Review my day" onClose={() => setReviewOpen(false)}>
+          <div className="field">
+            <label>Evening reflection</label>
+            <textarea
+              rows={3}
+              value={reflection}
+              onChange={(e) => mark(setReflection)(e.target.value)}
+              placeholder="What lifted your energy, what drained it"
+            />
+          </div>
+          <div className="btn-row" style={{ marginBottom: 4 }}>
+            <button
+              className="btn btn-primary btn-auto"
+              onClick={save}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save day"}
+            </button>
+            <label className="check-row" style={{ margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => mark(setIsPrivate)(e.target.checked)}
+              />
+              <span>Private</span>
+            </label>
+          </div>
+          <CoachReview
+            key={date}
+            date={date}
+            enabled={entryExists && !dirty}
+            autoRun
+            hint={
+              !entryExists
+                ? "Save the day first, then get the review."
+                : "Save your latest changes, then re-run the review."
+            }
+          />
+        </Modal>
+      ) : null}
+
+      {askOpen ? (
+        <Modal title="Ask the coach" onClose={() => setAskOpen(false)}>
+          <AskCoach embedded />
+        </Modal>
+      ) : null}
+    </div>
+  );
+}
+
+function RowFoot({ sys, label }: { sys: System | null; label?: string }) {
+  return (
+    <div className="sys-card-foot">
+      <Link href={sys ? `/systems/${sys.id}` : "/systems"} className="link">
+        {label ?? "Open playbook"}
+      </Link>
     </div>
   );
 }

@@ -43,7 +43,7 @@ export default async function TodayPage() {
   return (
     <div className="shell">
       <TopNav email={user.email} />
-      <main className="container container-today">
+      <main className="container container-tight">
         <TodayClient
           userId={user.id}
           systems={(systems as System[]) ?? []}
@@ -52,7 +52,6 @@ export default async function TodayPage() {
           sleepConfig={sleepConfig}
           exerciseConfig={exerciseConfig}
           schedule={scheduleConfig}
-          dietWindow={dietConfig.window}
         />
       </main>
     </div>
