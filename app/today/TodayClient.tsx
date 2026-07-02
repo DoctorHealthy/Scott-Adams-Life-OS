@@ -149,7 +149,7 @@ export default function TodayClient({
       setDietLog(
         data
           ? readDietLog(data.meals)
-          : { kcal: prefillKcal, protein: prefillProtein, waterMl: 0 }
+          : { kcal: prefillKcal, protein: prefillProtein, waterMl: 0, weightKg: null }
       );
       const ml = (data?.module_logs ?? {}) as {
         sleep?: unknown;

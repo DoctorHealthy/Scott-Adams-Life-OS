@@ -499,6 +499,161 @@ Now produce the WEEKLY REVIEW exactly as instructed above.
 `.trim();
 }
 
+// ---------- Monthly review ----------
+
+export const MONTHLY_REVIEW_TASK = `
+=====  YOUR TASK NOW: MONTHLY REVIEW  =====
+Run the monthly zoom-out off the DATA block below. It is the only source of
+truth.
+
+HARD RULES
+- Every number you state comes from the DATA block. Never compute, estimate, or
+  invent one. If something is missing, say "not logged".
+- The month-versus-last-month deltas are already in the DATA. Quote them; do not
+  derive your own.
+- Persona: hardcore, directive, strategic, tight. No filler, no preamble, no
+  emojis, no em dashes, no double dashes.
+- Respect the user's constraints (see profile).
+
+FORMAT, exactly this, plain text only. No markdown symbols, no all-caps headers.
+
+Verdict: one punchy line naming the month's single most important truth.
+
+Then a blank line, then the read with NO label: 3 to 6 tight sentences on the
+month's trends: energy, sleep consistency, system adherence, protein, weight.
+Anchor each claim to the numbers. Where last month's numbers exist, say what
+changed and in which direction.
+
+Goals: one line per goal with its progress and movement. If a goal has not
+moved, say so plainly.
+
+Lever: the single biggest lever for next month, two or three lines. One lever,
+not a list. Concrete: name the exact behavior, when it happens, and what number
+it should move.
+
+Keep the whole thing under about 300 words. A clean, keepable summary.
+`.trim();
+
+type MonthNumbersLike = {
+  daysLogged: number;
+  daysInWindow: number;
+  energyAvg: number | null;
+  energyCount: number;
+  sleepConsistencyPct: number | null;
+  wakesLogged: number;
+  adherencePct: number | null;
+  proteinAvg: number | null;
+  proteinDaysHit: number;
+  proteinDaysLogged: number;
+  weightFirst: number | null;
+  weightLast: number | null;
+};
+
+type MonthlyStatsLike = {
+  start: string;
+  end: string;
+  month: MonthNumbersLike;
+  prev: MonthNumbersLike | null;
+  prevLabel: string | null;
+  systems: {
+    name: string;
+    done: number;
+    floor: number;
+    skip: number;
+    ranPct: number | null;
+  }[];
+  goals: { title: string; progress: number; delta: number | null; linked: boolean }[];
+};
+
+function fmtMonthNumbers(m: MonthNumbersLike): string {
+  const weight =
+    m.weightFirst != null && m.weightLast != null
+      ? `${m.weightFirst} kg to ${m.weightLast} kg (${
+          Math.round((m.weightLast - m.weightFirst) * 10) / 10 >= 0 ? "+" : ""
+        }${Math.round((m.weightLast - m.weightFirst) * 10) / 10} kg)`
+      : m.weightLast != null
+        ? `${m.weightLast} kg (one weigh-in)`
+        : "not logged";
+  return [
+    `- Days logged: ${m.daysLogged} of ${m.daysInWindow}`,
+    `- Energy average: ${m.energyAvg ?? "not logged"} (${m.energyCount} days)`,
+    `- Sleep consistency: ${
+      m.sleepConsistencyPct != null
+        ? `${m.sleepConsistencyPct}% of ${m.wakesLogged} logged wakes within 30 min of target`
+        : "not logged"
+    }`,
+    `- System adherence: ${m.adherencePct != null ? `${m.adherencePct}%` : "not logged"}`,
+    `- Protein average: ${m.proteinAvg != null ? `${m.proteinAvg} g` : "not logged"} (hit target ${m.proteinDaysHit} of ${m.proteinDaysLogged} logged days)`,
+    `- Weight: ${weight}`,
+  ].join("\n");
+}
+
+export function buildMonthlyReviewPrompt(args: {
+  profile: ProfileLike | null;
+  stats: MonthlyStatsLike;
+}): string {
+  const { profile, stats: s } = args;
+
+  const p = profile;
+  const profileBlock = p
+    ? [
+        `Name: ${p.name ?? "unknown"}`,
+        `Constraints: ${fmtConstraints(p.constraints)}`,
+      ].join("\n")
+    : "Profile not set.";
+
+  const systemLines = s.systems
+    .map(
+      (x) =>
+        `- ${x.name}: ${x.done} done, ${x.floor} floor, ${x.skip} skip${
+          x.ranPct != null ? ` (ran ${x.ranPct}% of logged days)` : ""
+        }`
+    )
+    .join("\n");
+
+  const goalLines = s.goals.length
+    ? s.goals
+        .map(
+          (g) =>
+            `- ${g.title}: ${g.progress}%${
+              g.delta == null
+                ? " (baseline, no prior monthly review)"
+                : g.delta === 0
+                  ? " (no movement)"
+                  : ` (${g.delta > 0 ? "+" : ""}${g.delta} pts since last monthly review)`
+            }${g.linked ? " [from systems]" : " [manual]"}`
+        )
+        .join("\n")
+    : "- no active goals";
+
+  return `
+=====  DATA (computed by the app; treat as exact, do not recompute)  =====
+
+USER PROFILE
+${profileBlock}
+
+MONTH UNDER REVIEW: ${s.start} to ${s.end}
+${fmtMonthNumbers(s.month)}
+
+${
+  s.prev
+    ? `LAST MONTH (${s.prevLabel}), for comparison
+${fmtMonthNumbers(s.prev)}`
+    : "LAST MONTH: no data logged, so no comparison is possible. Do not invent one."
+}
+
+SYSTEMS THIS MONTH
+${systemLines || "- no active systems"}
+
+GOALS
+${goalLines}
+
+=====  END DATA  =====
+
+Now produce the MONTHLY REVIEW exactly as instructed above.
+`.trim();
+}
+
 // ---------- Ask the coach ----------
 
 export const ASK_TASK = `

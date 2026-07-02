@@ -24,11 +24,21 @@ export default function DietLog({
   const [snackKcal, setSnackKcal] = useState("");
   const [snackProtein, setSnackProtein] = useState("");
 
-  function set(field: keyof DietLogValue, v: number) {
+  function set(field: "kcal" | "protein" | "waterMl", v: number) {
     onChange({ ...value, [field]: Math.max(0, Math.round(v)) });
   }
-  function bump(field: keyof DietLogValue, delta: number) {
+  function bump(field: "kcal" | "protein" | "waterMl", delta: number) {
     set(field, value[field] + delta);
+  }
+  function setWeight(raw: string) {
+    if (raw.trim() === "") {
+      onChange({ ...value, weightKg: null });
+      return;
+    }
+    const n = Number(raw.replace(",", "."));
+    if (Number.isFinite(n) && n > 0) {
+      onChange({ ...value, weightKg: Math.round(n * 10) / 10 });
+    }
   }
   function addMeal(m: DietMeal) {
     onChange({
@@ -146,6 +156,24 @@ export default function DietLog({
         <div className="water-bar">
           <div className="water-fill" style={{ width: `${waterPct}%` }} />
         </div>
+      </div>
+
+      {/* Weight: a measurement, optional, never carried over from yesterday. */}
+      <div className="weight-row" style={{ marginTop: 14 }}>
+        <span className="stepper-label">
+          Weight
+          <span className="stepper-sub muted">kg, optional, when you weigh in</span>
+        </span>
+        <input
+          className="step-input"
+          type="number"
+          inputMode="decimal"
+          step={0.1}
+          min={0}
+          placeholder="--"
+          value={value.weightKg ?? ""}
+          onChange={(e) => setWeight(e.target.value)}
+        />
       </div>
 
       {/* Optional: add from the meal menu */}

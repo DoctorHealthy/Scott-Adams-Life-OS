@@ -2,35 +2,31 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import TopNav from "@/components/TopNav";
-import WeeklyReview from "@/components/WeeklyReview";
+import MonthlyReview from "@/components/MonthlyReview";
 import { localDateStr } from "@/lib/constants";
-import { readReviewConfig } from "@/lib/review/config";
-import type { WeeklyStats } from "@/lib/review/weekly";
+import type { MonthlyStats } from "@/lib/review/monthly";
 
 type ReviewRow = {
   period_start: string;
   period_end: string;
-  stats: WeeklyStats;
+  stats: MonthlyStats;
   narration: string;
 };
 
-export default async function WeeklyPage() {
+export default async function MonthlyPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: reviews }] = await Promise.all([
-    supabase.from("users").select("coaching_prefs").eq("id", user.id).single(),
-    supabase
-      .from("reviews")
-      .select("period_start, period_end, stats, narration")
-      .eq("user_id", user.id)
-      .eq("kind", "weekly")
-      .order("period_end", { ascending: false })
-      .limit(9),
-  ]);
+  const { data: reviews } = await supabase
+    .from("reviews")
+    .select("period_start, period_end, stats, narration")
+    .eq("user_id", user.id)
+    .eq("kind", "monthly")
+    .order("period_end", { ascending: false })
+    .limit(7);
 
   const rows = (reviews as ReviewRow[]) ?? [];
   const latest = rows[0] ?? null;
@@ -38,7 +34,6 @@ export default async function WeeklyPage() {
     period_start: r.period_start,
     period_end: r.period_end,
   }));
-  const { weeklyDay } = readReviewConfig(profile?.coaching_prefs);
 
   return (
     <div className="shell">
@@ -46,26 +41,25 @@ export default async function WeeklyPage() {
       <main className="container container-tight">
         <div className="stack">
           <div>
-            <div className="eyebrow">Weekly review</div>
-            <h1 style={{ marginTop: 6 }}>The last 7 days</h1>
+            <div className="eyebrow">Monthly review</div>
+            <h1 style={{ marginTop: 6 }}>The zoom-out</h1>
             <p className="muted" style={{ marginTop: 6 }}>
-              What ran on autopilot, what needed willpower, and the one change
-              for next week. All numbers computed from your logs.
+              The month's trends, goal progress, what changed versus last month,
+              and the one lever for next month.
             </p>
           </div>
 
-          <WeeklyReview
+          <MonthlyReview
             today={localDateStr()}
             initialStats={latest?.stats ?? null}
             initialNarration={latest?.narration ?? null}
             initialPeriodEnd={latest?.period_end ?? null}
-            weeklyDay={weeklyDay}
             past={past}
           />
 
           <div className="btn-row">
-            <Link href="/monthly" className="btn btn-auto">
-              Monthly review
+            <Link href="/trends" className="btn btn-auto">
+              Trends
             </Link>
             <Link href="/today" className="link" style={{ alignSelf: "center" }}>
               &larr; Back to Today

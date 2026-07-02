@@ -8,12 +8,20 @@ export type DietLogValue = {
   kcal: number;
   protein: number;
   waterMl: number;
+  // Body weight is a measurement, not a running total: null means "not
+  // measured today" and it is never prefilled or carried over.
+  weightKg: number | null;
 };
 
 export const GLASS_ML = 250;
 
 export function emptyDietLog(): DietLogValue {
-  return { kcal: 0, protein: 0, waterMl: 0 };
+  return { kcal: 0, protein: 0, waterMl: 0, weightKg: null };
+}
+
+function readWeight(raw: unknown): number | null {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 10) / 10 : null;
 }
 
 function sumItems(items: unknown[]): { kcal: number; protein: number } {
@@ -40,13 +48,14 @@ function sumItems(items: unknown[]): { kcal: number; protein: number } {
 export function readDietLog(raw: unknown): DietLogValue {
   if (Array.isArray(raw)) {
     const t = sumItems(raw);
-    return { kcal: t.kcal, protein: t.protein, waterMl: 0 };
+    return { kcal: t.kcal, protein: t.protein, waterMl: 0, weightKg: null };
   }
   if (raw && typeof raw === "object") {
     const o = raw as {
       kcal?: unknown;
       protein?: unknown;
       waterMl?: unknown;
+      weightKg?: unknown;
       items?: unknown;
     };
     if (typeof o.kcal === "number" || typeof o.protein === "number") {
@@ -54,11 +63,17 @@ export function readDietLog(raw: unknown): DietLogValue {
         kcal: Number(o.kcal) || 0,
         protein: Number(o.protein) || 0,
         waterMl: Number(o.waterMl) || 0,
+        weightKg: readWeight(o.weightKg),
       };
     }
     if (Array.isArray(o.items)) {
       const t = sumItems(o.items);
-      return { kcal: t.kcal, protein: t.protein, waterMl: Number(o.waterMl) || 0 };
+      return {
+        kcal: t.kcal,
+        protein: t.protein,
+        waterMl: Number(o.waterMl) || 0,
+        weightKg: readWeight(o.weightKg),
+      };
     }
   }
   return emptyDietLog();
