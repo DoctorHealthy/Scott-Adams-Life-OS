@@ -15,7 +15,7 @@ export default function TrendsView({ series }: { series: TrendSeries }) {
 
   return (
     <div className="stack">
-      <div className="trend-range">
+      <div style={{ display: "flex", gap: 8 }}>
         {([30, 90] as const).map((d) => (
           <button
             key={d}
