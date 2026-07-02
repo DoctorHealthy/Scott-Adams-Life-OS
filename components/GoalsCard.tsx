@@ -1,12 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import {
-  LINK_LABELS,
-  type Goal,
-  type GoalLink,
-  type Quarter,
-} from "@/lib/goals/goals";
+import Link from "next/link";
+import type { Goal, LinkChoice, Quarter } from "@/lib/goals/goals";
 
 const QUARTERS: Quarter[] = [1, 2, 3, 4];
 
@@ -15,13 +11,17 @@ export default function GoalsCard({
   year,
   thisQuarter,
   progressFor,
+  linkChoices,
   onPersist,
+  fullViewHref,
 }: {
   initialGoals: Goal[];
   year: number;
   thisQuarter: Quarter;
   progressFor: (g: Goal) => number;
+  linkChoices: LinkChoice[];
   onPersist: (goals: Goal[]) => void;
+  fullViewHref?: string;
 }) {
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const goalsRef = useRef<Goal[]>(initialGoals);
@@ -46,10 +46,12 @@ export default function GoalsCard({
       why: "",
       quarter: thisQuarter,
       year,
+      linkedSystemId: null,
       link: "manual",
       manualProgress: 0,
       notes: "",
       milestones: [],
+      status: "active",
     };
     update([...goalsRef.current, g]);
     commit();
@@ -69,9 +71,16 @@ export default function GoalsCard({
     <div className="card">
       <div className="card-head-row">
         <span className="block-title">Goals</span>
-        <button className="btn btn-ghost btn-auto" onClick={addGoal}>
-          + Add goal
-        </button>
+        <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {fullViewHref ? (
+            <Link href={fullViewHref} className="link" style={{ fontSize: 13 }}>
+              Full view
+            </Link>
+          ) : null}
+          <button className="btn btn-ghost btn-auto" onClick={addGoal}>
+            + Add goal
+          </button>
+        </span>
       </div>
 
       <div className="quarter-grid">
@@ -83,7 +92,7 @@ export default function GoalsCard({
             <div className="quarter-label">Q{q}</div>
             <div className="quarter-goals">
               {goals
-                .filter((g) => g.quarter === q)
+                .filter((g) => g.quarter === q && g.year === year)
                 .map((g) => {
                   const pct = progressFor(g);
                   return (
@@ -104,7 +113,7 @@ export default function GoalsCard({
                     </button>
                   );
                 })}
-              {goals.filter((g) => g.quarter === q).length === 0 ? (
+              {goals.filter((g) => g.quarter === q && g.year === year).length === 0 ? (
                 <div className="quarter-empty muted">&mdash;</div>
               ) : null}
             </div>
@@ -154,15 +163,21 @@ export default function GoalsCard({
             <div className="field">
               <label>Progress source</label>
               <select
-                value={selected.link}
+                value={selected.linkedSystemId ?? ""}
                 onChange={(e) => {
-                  patch(selected.id, { link: e.target.value as GoalLink });
+                  const choice =
+                    linkChoices.find((c) => c.value === e.target.value) ??
+                    linkChoices[0];
+                  patch(selected.id, {
+                    linkedSystemId: choice.value || null,
+                    link: choice.kind,
+                  });
                   commit();
                 }}
               >
-                {LINK_LABELS.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
+                {linkChoices.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
                   </option>
                 ))}
               </select>

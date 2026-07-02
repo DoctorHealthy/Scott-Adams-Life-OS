@@ -2,32 +2,44 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { Goal } from "@/lib/goals/goals";
+import { rowFromGoal, type Goal } from "@/lib/goals/goals";
 
 type ActionResult = { ok: true } | { error: string };
 
-export async function saveGoals(goals: Goal[]): Promise<ActionResult> {
+// Persist one year's goals: upsert everything provided, remove what the user
+// deleted. Scoped to the year so other years are never touched.
+export async function saveGoalsForYear(
+  year: number,
+  goals: Goal[]
+): Promise<ActionResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("coaching_prefs")
-    .eq("id", user.id)
-    .single();
+  const rows = goals
+    .filter((g) => g.year === year)
+    .map((g) => rowFromGoal(g, user.id));
 
-  const prefs = (profile?.coaching_prefs ?? {}) as Record<string, unknown>;
-  const next = { ...prefs, goals };
+  if (rows.length > 0) {
+    const { error } = await supabase.from("goals").upsert(rows);
+    if (error) return { error: error.message };
+  }
 
-  const { error } = await supabase
-    .from("users")
-    .update({ coaching_prefs: next })
-    .eq("id", user.id);
+  const keepIds = rows.map((r) => r.id);
+  let del = supabase
+    .from("goals")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("target_year", year);
+  if (keepIds.length > 0) {
+    del = del.not("id", "in", `(${keepIds.join(",")})`);
+  }
+  const { error: delError } = await del;
+  if (delError) return { error: delError.message };
 
-  if (error) return { error: error.message };
   revalidatePath("/today");
+  revalidatePath("/goals");
   return { ok: true };
 }

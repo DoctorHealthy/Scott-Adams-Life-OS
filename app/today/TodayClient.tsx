@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addDays, localDateStr, prettyDate, STATUS_META } from "@/lib/constants";
 import type { System, SystemStatus } from "@/lib/types";
 import { saveEntry } from "@/app/checkin/actions";
-import { saveGoals } from "@/app/goals/actions";
+import { saveGoalsForYear } from "@/app/goals/actions";
 import CoachReview from "@/components/CoachReview";
 import AskCoach from "@/components/AskCoach";
 import Modal from "@/components/Modal";
@@ -28,7 +28,6 @@ import {
 import {
   readExerciseLog,
   emptyExerciseLog,
-  computeExerciseStats,
   type ExerciseConfig,
   type ExerciseLog,
 } from "@/lib/exercise/exercise";
@@ -41,9 +40,11 @@ import { deriveFocusLine } from "@/lib/today/focus";
 import { gemForDate } from "@/lib/mind/gems";
 import Nudges from "@/components/Nudges";
 import {
+  computeGoalProgressInputs,
   currentQuarter,
   currentYear,
   goalProgress,
+  linkChoices,
   type Goal,
 } from "@/lib/goals/goals";
 
@@ -263,29 +264,17 @@ export default function TodayClient({
   const focusLine = mindLog.intention || codeFocus;
 
   // ---- goal progress inputs (computed in code from recent days) ----
-  const exStats = computeExerciseStats(
-    exerciseConfig,
-    recent.map((r) => ({ date: r.date, log: readExerciseLog(r.module_logs?.exercise) })),
-    date
-  );
-  const proteinTarget = targets.protein;
-  const last7 = recent.filter((r) => r.date <= date).slice(0, 7);
-  const proteinDaysLogged = last7.filter((r) => readDietLog(r.meals).protein > 0).length;
-  const proteinDaysHit =
-    proteinTarget == null
-      ? 0
-      : last7.filter((r) => readDietLog(r.meals).protein >= proteinTarget * 0.9).length;
-  const progressInputs = {
+  const progressInputs = computeGoalProgressInputs({
+    date,
     sleepConfig,
-    sessionsLast7: exStats.sessionsLast7,
-    sessionsTarget: exStats.sessionsTarget,
-    proteinDaysHit,
-    proteinDaysLogged,
-  };
+    exerciseConfig,
+    proteinTarget: targets.protein,
+    recent,
+  });
   const progressFor = (g: Goal) => goalProgress(g, progressInputs);
 
   async function persistGoals(next: Goal[]) {
-    await saveGoals(next);
+    await saveGoalsForYear(currentYear(date ?? today), next);
     router.refresh();
   }
 
@@ -560,7 +549,9 @@ export default function TodayClient({
         year={currentYear(date)}
         thisQuarter={currentQuarter(date)}
         progressFor={progressFor}
+        linkChoices={linkChoices(systems)}
         onPersist={persistGoals}
+        fullViewHref="/goals"
       />
 
       {/* Actions */}

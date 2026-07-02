@@ -10,8 +10,10 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
 
 ## Milestones (MASTER-BUILD-SPEC.md section 15)
 - M1 Today cleanup to spec: DONE.
-- M2 Goals/Projects (goals table + full year view): next.
-- M3 Weekly review.
+- M2 Goals/Projects (goals table + full year view): DONE. Requires running
+  supabase/migrations/0003_goals.sql in the Supabase SQL editor once; it also
+  migrates the old jsonb goals across and strips them from coaching_prefs.
+- M3 Weekly review: next.
 - M4 Trends + monthly review + pattern-finding.
 - M5 Coach upgrade (root-cause + concrete fix, vision tie-ins).
 - M6 Reframe library verification pass (mostly built already).
@@ -21,7 +23,7 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
 - M10 Reminders engine (cron-job.org + Telegram + web push), fast-follow.
 
 ## Known state notes
-- Goals currently stored in users.coaching_prefs.goals (jsonb); M2 migrates them to a dedicated goals table (spec section 14) and builds the full /goals year view (placeholder today).
+- Goals live in the goals table; the link kind (sleep step, sessions/week, protein) is resolved in code from the linked system's domain. RLS already lets accepted friends read goals (for the M7 partner view).
 - CoachBriefing component and /api/coach/briefing route are orphaned by the v2.1 top-card cut; remove or repurpose when convenient.
 - Verify each milestone with: npm run typecheck && npm run build.
 
