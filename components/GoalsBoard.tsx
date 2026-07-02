@@ -60,8 +60,9 @@ export default function GoalsBoard({
         progressFor={(g) => goalProgress(g, progressInputs)}
         linkChoices={linkChoices}
         onPersist={async (next) => {
-          await saveGoalsForYear(year, next);
+          const res = await saveGoalsForYear(year, next);
           router.refresh();
+          return res;
         }}
       />
 

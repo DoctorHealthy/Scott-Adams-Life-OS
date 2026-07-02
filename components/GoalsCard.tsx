@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Goal, LinkChoice, Quarter } from "@/lib/goals/goals";
 
 const QUARTERS: Quarter[] = [1, 2, 3, 4];
+
+type PersistResult = { ok: true } | { error: string } | void;
 
 export default function GoalsCard({
   initialGoals,
@@ -20,7 +22,7 @@ export default function GoalsCard({
   thisQuarter: Quarter;
   progressFor: (g: Goal) => number;
   linkChoices: LinkChoice[];
-  onPersist: (goals: Goal[]) => void;
+  onPersist: (goals: Goal[]) => Promise<PersistResult> | void;
   fullViewHref?: string;
 }) {
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
@@ -28,13 +30,63 @@ export default function GoalsCard({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [milestoneText, setMilestoneText] = useState("");
 
+  // Goals persist on their own, decoupled from the daily entry save:
+  // structural changes commit immediately, typing commits debounced, and the
+  // result is shown so a failed save is never silent.
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">(
+    "idle"
+  );
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onPersistRef = useRef(onPersist);
+  onPersistRef.current = onPersist;
+
   function update(next: Goal[]) {
     goalsRef.current = next;
     setGoals(next);
   }
-  function commit() {
-    onPersist(goalsRef.current);
+
+  async function commit() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setSaveState("saving");
+    setSaveError(null);
+    try {
+      const res = await onPersistRef.current(goalsRef.current);
+      if (res && "error" in res) {
+        setSaveState("error");
+        setSaveError(res.error);
+      } else {
+        setSaveState("saved");
+      }
+    } catch {
+      setSaveState("error");
+      setSaveError("Could not reach the server.");
+    }
   }
+
+  // Debounced commit for text fields, so edits save while typing pauses.
+  function commitSoon() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      void commit();
+    }, 600);
+  }
+
+  // Flush a pending debounced save if the card unmounts (navigation).
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        void onPersistRef.current(goalsRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function patch(id: string, fields: Partial<Goal>) {
     update(goalsRef.current.map((g) => (g.id === id ? { ...g, ...fields } : g)));
   }
@@ -72,6 +124,15 @@ export default function GoalsCard({
       <div className="card-head-row">
         <span className="block-title">Goals</span>
         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {saveState === "saving" ? (
+            <span className="muted" style={{ fontSize: 12 }}>
+              Saving...
+            </span>
+          ) : saveState === "saved" ? (
+            <span className="muted" style={{ fontSize: 12 }}>
+              Saved.
+            </span>
+          ) : null}
           {fullViewHref ? (
             <Link href={fullViewHref} className="link" style={{ fontSize: 13 }}>
               Full view
@@ -82,6 +143,15 @@ export default function GoalsCard({
           </button>
         </span>
       </div>
+
+      {saveState === "error" ? (
+        <div className="alert alert-error" style={{ marginBottom: 10 }}>
+          Goals did not save{saveError ? `: ${saveError}` : "."}{" "}
+          <button className="link" onClick={() => void commit()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       <div className="quarter-grid">
         {QUARTERS.map((q) => (
@@ -128,16 +198,22 @@ export default function GoalsCard({
               <label>Title</label>
               <input
                 value={selected.title}
-                onChange={(e) => patch(selected.id, { title: e.target.value })}
-                onBlur={commit}
+                onChange={(e) => {
+                  patch(selected.id, { title: e.target.value });
+                  commitSoon();
+                }}
+                onBlur={() => void commit()}
               />
             </div>
             <div className="field">
               <label>Why (one word)</label>
               <input
                 value={selected.why}
-                onChange={(e) => patch(selected.id, { why: e.target.value })}
-                onBlur={commit}
+                onChange={(e) => {
+                  patch(selected.id, { why: e.target.value });
+                  commitSoon();
+                }}
+                onBlur={() => void commit()}
                 placeholder="e.g. freedom"
               />
             </div>
@@ -203,8 +279,8 @@ export default function GoalsCard({
                 onChange={(e) =>
                   patch(selected.id, { manualProgress: Number(e.target.value) })
                 }
-                onMouseUp={commit}
-                onTouchEnd={commit}
+                onMouseUp={() => void commit()}
+                onTouchEnd={() => void commit()}
               />
             </div>
           ) : null}
@@ -214,8 +290,11 @@ export default function GoalsCard({
             <textarea
               rows={2}
               value={selected.notes}
-              onChange={(e) => patch(selected.id, { notes: e.target.value })}
-              onBlur={commit}
+              onChange={(e) => {
+                patch(selected.id, { notes: e.target.value });
+                commitSoon();
+              }}
+              onBlur={() => void commit()}
             />
           </div>
 
@@ -303,7 +382,10 @@ export default function GoalsCard({
           <div className="btn-row">
             <button
               className="btn btn-auto"
-              onClick={() => setSelectedId(null)}
+              onClick={() => {
+                void commit();
+                setSelectedId(null);
+              }}
             >
               Done
             </button>

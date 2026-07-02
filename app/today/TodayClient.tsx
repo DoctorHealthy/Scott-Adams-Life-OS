@@ -274,8 +274,9 @@ export default function TodayClient({
   const progressFor = (g: Goal) => goalProgress(g, progressInputs);
 
   async function persistGoals(next: Goal[]) {
-    await saveGoalsForYear(currentYear(date ?? today), next);
+    const res = await saveGoalsForYear(currentYear(date ?? today), next);
     router.refresh();
+    return res;
   }
 
   // Plain helpers that RETURN JSX (not components used as <Row/>), so the
