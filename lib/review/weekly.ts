@@ -53,6 +53,7 @@ export type GoalWeek = {
   progress: number;
   delta: number | null; // vs the prior stored review, null if no baseline
   linked: boolean;
+  staleDays?: number | null; // merged in by the route from review history
 };
 
 export type WeeklyStats = {
@@ -93,6 +94,55 @@ function avg(nums: number[]): number | null {
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+// Energy-to-habit correlations over a window ending at `end`. For each system,
+// average energy on days it was done vs days it was not. Only report where both
+// buckets have >= 2 energy-logged days and the gap is >= 0.8, so noise never
+// gets dressed up as a pattern. Shared by the weekly review and the daily
+// review's pattern block.
+export function computeEnergyCorrelations(args: {
+  end: string;
+  windowDays: number;
+  systems: { id: string; name: string }[];
+  entries: {
+    date: string;
+    energy_1_10: number | null;
+    system_statuses: Record<string, SystemStatus>;
+  }[];
+}): Correlation[] {
+  const { end, windowDays, systems, entries } = args;
+  const start = addDays(end, -(windowDays - 1));
+  const inWindow = entries.filter((e) => e.date >= start && e.date <= end);
+
+  const out: Correlation[] = [];
+  for (const s of systems) {
+    const on: number[] = [];
+    const off: number[] = [];
+    for (const e of inWindow) {
+      if (e.energy_1_10 == null) continue;
+      const st = e.system_statuses?.[s.id];
+      if (st === "done") on.push(e.energy_1_10);
+      else off.push(e.energy_1_10);
+    }
+    if (on.length >= 2 && off.length >= 2) {
+      const eOn = avg(on) as number;
+      const eOff = avg(off) as number;
+      const gap = round1(eOn - eOff);
+      if (Math.abs(gap) >= 0.8) {
+        out.push({
+          name: s.name,
+          energyOn: round1(eOn),
+          energyOff: round1(eOff),
+          gap,
+          daysOn: on.length,
+          daysOff: off.length,
+        });
+      }
+    }
+  }
+  out.sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
+  return out;
 }
 
 export function computeWeeklyStats(args: {
@@ -153,38 +203,13 @@ export function computeWeeklyStats(args: {
     return { id: s.id, name: s.name, domain: s.domain, done, floor, skip, notLogged, label };
   });
 
-  // ---- energy-to-habit correlations ----
-  // For each system, compare average energy on days it was done vs days it was
-  // not done. Only report where both buckets have >= 2 energy-logged days and
-  // the gap is at least 0.8, so we never surface noise.
-  const correlations: Correlation[] = [];
-  for (const s of systems) {
-    const on: number[] = [];
-    const off: number[] = [];
-    for (const d of days) {
-      const e = byDate.get(d);
-      if (!e || e.energy_1_10 == null) continue;
-      const st = e.system_statuses?.[s.id];
-      if (st === "done") on.push(e.energy_1_10);
-      else off.push(e.energy_1_10);
-    }
-    if (on.length >= 2 && off.length >= 2) {
-      const eOn = avg(on) as number;
-      const eOff = avg(off) as number;
-      const gap = round1(eOn - eOff);
-      if (Math.abs(gap) >= 0.8) {
-        correlations.push({
-          name: s.name,
-          energyOn: round1(eOn),
-          energyOff: round1(eOff),
-          gap,
-          daysOn: on.length,
-          daysOff: off.length,
-        });
-      }
-    }
-  }
-  correlations.sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
+  // ---- energy-to-habit correlations (shared computation) ----
+  const correlations = computeEnergyCorrelations({
+    end,
+    windowDays: 7,
+    systems,
+    entries: windowEntries,
+  });
 
   // ---- one system to reconsider: most skips, then lowest done ----
   let candidate: WeeklyStats["candidate"] = null;

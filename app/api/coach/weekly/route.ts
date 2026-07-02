@@ -18,6 +18,7 @@ import {
   type GoalSnapshot,
   type WeekEntry,
 } from "@/lib/review/weekly";
+import { goalStaleDays, type SnapshotReview } from "@/lib/review/stale";
 import { addDays } from "@/lib/constants";
 import type { System } from "@/lib/types";
 
@@ -84,20 +85,26 @@ export async function POST(request: Request) {
     recent: rows,
   });
 
-  // Prior weekly review, to measure goal movement.
-  const { data: prior } = await supabase
+  // Review history: the latest prior weekly for goal movement, the rest for
+  // staleness (all computed in code).
+  const { data: priorReviews } = await supabase
     .from("reviews")
-    .select("stats")
+    .select("period_end, kind, stats")
     .eq("user_id", user.id)
-    .eq("kind", "weekly")
     .lt("period_end", end)
     .order("period_end", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const priorGoalSnapshot =
-    ((prior?.stats as { goals?: { id: string; progress: number }[] } | null)?.goals?.map(
-      (g) => ({ id: g.id, progress: g.progress })
-    ) as GoalSnapshot[] | undefined) ?? null;
+    .limit(12);
+  const priorList =
+    (priorReviews as {
+      period_end: string;
+      kind: string;
+      stats: { goals?: { id: string; progress: number }[]; goalSnapshot?: GoalSnapshot[] };
+    }[]) ?? [];
+  const priorWeekly = priorList.find((r) => r.kind === "weekly");
+  const priorGoalSnapshot: GoalSnapshot[] | null =
+    priorWeekly?.stats.goalSnapshot ??
+    priorWeekly?.stats.goals?.map((g) => ({ id: g.id, progress: g.progress })) ??
+    null;
 
   const stats = computeWeeklyStats({
     end,
@@ -108,6 +115,21 @@ export async function POST(request: Request) {
     progressInputs,
     priorGoalSnapshot,
   });
+
+  // Merge staleness into the goal lines (code-computed from the history).
+  const snaps: SnapshotReview[] = priorList.map((r) => ({
+    period_end: r.period_end,
+    goalSnapshot:
+      r.stats.goalSnapshot ??
+      r.stats.goals?.map((g) => ({ id: g.id, progress: g.progress })) ??
+      [],
+  }));
+  const stale = goalStaleDays(
+    stats.goals.map((g) => ({ id: g.id, progress: g.progress })),
+    snaps,
+    end
+  );
+  stats.goals = stats.goals.map((g) => ({ ...g, staleDays: stale.get(g.id) ?? null }));
 
   let system: string;
   try {

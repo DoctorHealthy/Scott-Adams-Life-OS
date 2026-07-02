@@ -28,8 +28,17 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   never prefilled). /monthly review: month numbers + deltas vs the full previous
   month in code, per-system counts, goal movement, coach narration, stored in
   reviews. No new migration (reuses the reviews table).
-- M5 Coach upgrade: next. Wire the trends/correlations into daily+weekly+monthly
-  DATA blocks, root-cause + concrete reversal on every miss, vision tie-ins.
+- M5 Coach upgrade: DONE. Code detects every daily miss with context facts
+  (lib/review/misses.ts: wake drift with bed-time context, morning light,
+  session-behind-pace, protein/calories under, explicit skips); the coach must
+  give a why + concrete reversal (exact action/time) per miss. 14-day energy
+  correlations in the daily DATA (shared computeEnergyCorrelations). Goal
+  staleness from review snapshots (lib/review/stale.ts, >=14 days flagged) in
+  daily/weekly/monthly. Vision + goals in the daily DATA, tie-ins occasional by
+  rule. coach-persona.md updated. Note: dev server caches coach-knowledge files;
+  restart it after editing them.
+- Deferred polish: time-of-day trend charts (wake/bed) still read awkwardly;
+  revisit the chart type later.
 - M5 Coach upgrade (root-cause + concrete fix, vision tie-ins).
 - M6 Reframe library verification pass (mostly built already).
 - M7 Two users + sharing (partner view, visibility toggles, RLS).

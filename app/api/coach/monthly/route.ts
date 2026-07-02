@@ -18,6 +18,7 @@ import {
   prevMonthRange,
   type MonthEntry,
 } from "@/lib/review/monthly";
+import { goalStaleDays, type SnapshotReview } from "@/lib/review/stale";
 import type { System } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -83,19 +84,24 @@ export async function POST(request: Request) {
     recent: rows,
   });
 
-  // Prior monthly review, for goal movement.
-  const { data: prior } = await supabase
+  // Review history: the latest prior monthly for goal movement, everything for
+  // staleness (all computed in code).
+  const { data: priorReviews } = await supabase
     .from("reviews")
-    .select("stats")
+    .select("period_end, kind, stats")
     .eq("user_id", user.id)
-    .eq("kind", "monthly")
-    .lt("period_end", monthStartOf(end))
+    .lt("period_end", end)
     .order("period_end", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(12);
+  const priorList =
+    (priorReviews as {
+      period_end: string;
+      kind: string;
+      stats: { goalSnapshot?: { id: string; progress: number }[] };
+    }[]) ?? [];
   const priorGoalSnapshot =
-    ((prior?.stats as { goalSnapshot?: { id: string; progress: number }[] } | null)
-      ?.goalSnapshot ?? null);
+    priorList.find((r) => r.kind === "monthly" && r.period_end < monthStartOf(end))
+      ?.stats.goalSnapshot ?? null;
 
   const stats = computeMonthlyStats({
     end,
@@ -107,6 +113,17 @@ export async function POST(request: Request) {
     progressInputs,
     priorGoalSnapshot,
   });
+
+  const snaps: SnapshotReview[] = priorList.map((r) => ({
+    period_end: r.period_end,
+    goalSnapshot: r.stats.goalSnapshot ?? [],
+  }));
+  const stale = goalStaleDays(
+    stats.goals.map((g) => ({ id: g.id, progress: g.progress })),
+    snaps,
+    end
+  );
+  stats.goals = stats.goals.map((g) => ({ ...g, staleDays: stale.get(g.id) ?? null }));
 
   let system: string;
   try {

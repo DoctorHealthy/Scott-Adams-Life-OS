@@ -37,6 +37,7 @@ export type MonthlyGoal = {
   progress: number;
   delta: number | null; // vs prior stored monthly review
   linked: boolean;
+  staleDays?: number | null; // merged in by the route from review history
 };
 
 export type MonthlyStats = {

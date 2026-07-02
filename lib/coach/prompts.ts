@@ -30,6 +30,20 @@ HARD RULES
 - Be aware of all of the user's active systems: sleep, diet, exercise, mind, and
   schedule. The read connects them, grounded in the real numbers. Do not just list
   them, and do not ignore mind or schedule.
+- MISSES: the DATA lists what was missed today, each with surrounding facts. For
+  the misses you address you must do two things: (a) name the likely why using
+  ONLY those facts (for example, session skipped after a 2:40 bed and energy 4),
+  and (b) give a concrete reversal for tomorrow: an exact action, an exact time,
+  an exact adjustment. Never vague. Not "try to sleep earlier" but "lights off,
+  book in hand at 01:30, phone on the charger across the room, wake stays 10:15."
+  If there are more than 2 misses, do this fully for the 2 highest-leverage ones
+  and name the rest in a single line.
+- PATTERNS: if the DATA lists an energy pattern that is relevant to today, use it
+  in the read (one line, plain language). Quote it; never derive new patterns.
+- VISION AND GOALS: only when the data gives a reason (a goal moved, a goal is
+  flagged stale, or today's work clearly served one), tie the day to a goal or
+  the vision in one line. Do not do this every day. If a goal is flagged stale,
+  call it out and attach the smallest next move.
 - Persona: hardcore, directive, strategic, tight. No filler, no preamble, no
   emojis, no em dashes, no double dashes. Reads numbers, never computes them.
 - Respect the user's constraints (see profile).
@@ -39,21 +53,22 @@ Use the small lowercase-style labels shown.
 
 Verdict: one punchy line naming the single most important thing about today.
 
-Then a blank line, then the read with NO label: 2 to 4 tight sentences in your
-voice, connecting the systems and grounded in the numbers (energy direction, what
-held and what slipped across sleep, diet, exercise, mind, schedule).
+Then a blank line, then the read with NO label: 2 to 5 tight sentences in your
+voice, connecting the systems and grounded in the numbers. This is where the
+miss diagnosis lives: the why for each miss you address, from the listed facts.
 
-Move: the single highest-leverage correction for tomorrow, one line.
+Move: the single highest-leverage correction for tomorrow, one line, concrete
+(exact action, exact time).
 
 Tomorrow:
 Then 2 to 4 morning time blocks, one per line, formatted "07:30  block, short
-reason", grounded in today's data (for example anchor the first block to morning
-light if it was missed).
+reason", grounded in today's data. Reversals from the misses go here as real
+blocks (for example anchor the first block to morning light if it was missed).
 
 Reframe: include this line ONLY if the user's one-line or reflection shows negative
 self-talk. Format "old frame -> new frame. Repeat it when <cue>."
 
-Keep the whole thing under 250 words. Orders, not essays.
+Keep the whole thing under 300 words. Orders, not essays.
 `.trim();
 
 function fmtConstraints(c: Record<string, unknown> | null): string {
@@ -97,6 +112,9 @@ type ExerciseNumbers = {
   ankleToday: boolean;
 };
 
+type MissLike = { what: string; context: string[] };
+type GoalLine = { title: string; progress: number; staleDays: number | null };
+
 export function buildDailyReviewPrompt(args: {
   profile: ProfileLike | null;
   systems: System[];
@@ -107,9 +125,26 @@ export function buildDailyReviewPrompt(args: {
   sleep: SleepNumbers;
   exercise: ExerciseNumbers;
   intention: string | null;
+  misses: MissLike[];
+  correlations: CorrelationLike[];
+  vision: string;
+  goals: GoalLine[];
 }): string {
-  const { profile, systems, entry, recent, date, diet, sleep, exercise, intention } =
-    args;
+  const {
+    profile,
+    systems,
+    entry,
+    recent,
+    date,
+    diet,
+    sleep,
+    exercise,
+    intention,
+    misses,
+    correlations,
+    vision,
+    goals,
+  } = args;
 
   // ---- numbers computed in code; the model only reads them ----
   const statuses = entry.system_statuses ?? {};
@@ -201,6 +236,45 @@ EXERCISE (computed by the app)
       ? `done (${exercise.sessionTypeToday ?? "type not set"})`
       : "not done"
   }, ankle prehab ${exercise.ankleToday ? "done" : "not done"}
+
+MISSES TODAY (detected by the code; diagnose the why from the facts, then give
+the concrete reversal per the rules)
+${
+  misses.length
+    ? misses
+        .map((m) => `- ${m.what}\n  facts: ${m.context.join("; ") || "none recorded"}`)
+        .join("\n")
+    : "- none detected; the day held"
+}
+
+ENERGY PATTERNS (last 14 days, computed; quote, never derive your own)
+${
+  correlations.length
+    ? correlations
+        .map(
+          (c) =>
+            `- ${c.name}: energy ${c.energyOn} on done days (${c.daysOn}d) vs ${c.energyOff} otherwise (${c.daysOff}d), gap ${c.gap > 0 ? "+" : ""}${c.gap}`
+        )
+        .join("\n")
+    : "- none strong enough to report"
+}
+
+VISION AND GOALS (tie in only when the data gives a reason)
+- Vision: ${vision}
+${
+  goals.length
+    ? goals
+        .map(
+          (g) =>
+            `- ${g.title}: ${g.progress}%${
+              g.staleDays != null && g.staleDays >= 14
+                ? ` (STALE: no movement in ${g.staleDays} days)`
+                : ""
+            }`
+        )
+        .join("\n")
+    : "- no active goals"
+}
 
 THE USER'S OWN WORDS TODAY
 - Morning intention: ${intention ?? "not set"}
@@ -337,16 +411,20 @@ counts). Call out the strongest energy-to-habit correlation in plain language
 (for example, energy runs higher on training days). Note goal movement if any
 goal moved.
 
-Cut or shrink: name the one system to shrink, move, or cut this week and why,
-one or two lines. Be concrete about the change.
+Cut or shrink: name the one system to shrink, move, or cut this week. Diagnose
+the why from the counts (root cause, not judgment), then the exact change: what
+it becomes, when it happens. Two or three lines.
 
 Campaign: one line on the sleep-shift step. If eligible to advance, say to
 advance to the next wake target; if not, say to keep holding the current wake.
 
-Next week: 2 to 3 orders for the coming week, one per line, each tied to the
-data above.
+Goals: if any goal is flagged STALE in the DATA, one line naming it and the
+smallest next move. If none are stale, skip this section entirely.
 
-Keep the whole thing under about 280 words. Orders, not essays.
+Next week: 2 to 3 orders for the coming week, one per line, each tied to the
+data above and each concrete (exact action, exact time or day).
+
+Keep the whole thing under about 300 words. Orders, not essays.
 `.trim();
 
 type SystemWeekLike = {
@@ -372,6 +450,7 @@ type GoalWeekLike = {
   progress: number;
   delta: number | null;
   linked: boolean;
+  staleDays?: number | null;
 };
 
 type WeeklyStatsLike = {
@@ -443,7 +522,11 @@ export function buildWeeklyReviewPrompt(args: {
                 : g.delta === 0
                   ? " (no change)"
                   : ` (${g.delta > 0 ? "+" : ""}${g.delta} pts since last review)`
-            }${g.linked ? " [from systems]" : " [manual]"}`
+            }${g.linked ? " [from systems]" : " [manual]"}${
+              g.staleDays != null && g.staleDays >= 14
+                ? ` (STALE: no movement in ${g.staleDays} days)`
+                : ""
+            }`
         )
         .join("\n")
     : "- no active goals";
@@ -525,11 +608,11 @@ Anchor each claim to the numbers. Where last month's numbers exist, say what
 changed and in which direction.
 
 Goals: one line per goal with its progress and movement. If a goal has not
-moved, say so plainly.
+moved or is flagged STALE, say so plainly and attach the smallest next move.
 
 Lever: the single biggest lever for next month, two or three lines. One lever,
-not a list. Concrete: name the exact behavior, when it happens, and what number
-it should move.
+not a list. Name the root cause it corrects (from the numbers), then the exact
+behavior, when it happens, and what number it should move.
 
 Keep the whole thing under about 300 words. A clean, keepable summary.
 `.trim();
@@ -562,7 +645,13 @@ type MonthlyStatsLike = {
     skip: number;
     ranPct: number | null;
   }[];
-  goals: { title: string; progress: number; delta: number | null; linked: boolean }[];
+  goals: {
+    title: string;
+    progress: number;
+    delta: number | null;
+    linked: boolean;
+    staleDays?: number | null;
+  }[];
 };
 
 function fmtMonthNumbers(m: MonthNumbersLike): string {
@@ -621,7 +710,11 @@ export function buildMonthlyReviewPrompt(args: {
                 : g.delta === 0
                   ? " (no movement)"
                   : ` (${g.delta > 0 ? "+" : ""}${g.delta} pts since last monthly review)`
-            }${g.linked ? " [from systems]" : " [manual]"}`
+            }${g.linked ? " [from systems]" : " [manual]"}${
+              g.staleDays != null && g.staleDays >= 14
+                ? ` (STALE: no movement in ${g.staleDays} days)`
+                : ""
+            }`
         )
         .join("\n")
     : "- no active goals";
