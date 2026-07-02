@@ -60,6 +60,7 @@ export default async function TodayPage() {
           sleepConfig={sleepConfig}
           exerciseConfig={exerciseConfig}
           schedule={scheduleConfig}
+          dietWindow={dietConfig.window}
           recent={(recent as RecentDay[]) ?? []}
           goals={readGoals(profile?.coaching_prefs)}
         />

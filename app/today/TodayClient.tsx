@@ -34,8 +34,12 @@ import {
 } from "@/lib/exercise/exercise";
 import { readMindLog, emptyMindLog, type MindLog } from "@/lib/mind/config";
 import type { ScheduleConfig } from "@/lib/schedule/schedule";
+import type { DietWindow } from "@/lib/diet/config";
 import { sessionForDate } from "@/lib/today/plan";
+import { computeBriefingSignals } from "@/lib/today/briefing";
+import { deriveFocusLine } from "@/lib/today/focus";
 import { gemForDate } from "@/lib/mind/gems";
+import Nudges from "@/components/Nudges";
 import {
   currentQuarter,
   currentYear,
@@ -61,6 +65,7 @@ export default function TodayClient({
   sleepConfig,
   exerciseConfig,
   schedule,
+  dietWindow,
   recent,
   goals,
 }: {
@@ -71,6 +76,7 @@ export default function TodayClient({
   sleepConfig: SleepConfig;
   exerciseConfig: ExerciseConfig;
   schedule: ScheduleConfig;
+  dietWindow: DietWindow;
   recent: RecentDay[];
   goals: Goal[];
 }) {
@@ -239,6 +245,23 @@ export default function TodayClient({
   const gem = gemForDate(date);
   const sessionDue = sessionForDate(exerciseConfig, date);
 
+  // Today's one-line focus: the user's intention wins; otherwise a dynamic
+  // line derived in code from the same signals as the briefing. Today only.
+  const codeFocus = isToday
+    ? deriveFocusLine(
+        computeBriefingSignals({
+          date,
+          name: "",
+          systems,
+          sleepConfig,
+          exerciseConfig,
+          proteinTarget: targets.protein,
+          recent,
+        })
+      )
+    : null;
+  const focusLine = mindLog.intention || codeFocus;
+
   // ---- goal progress inputs (computed in code from recent days) ----
   const exStats = computeExerciseStats(
     exerciseConfig,
@@ -363,10 +386,10 @@ export default function TodayClient({
           </div>
         </div>
 
-        {mindLog.intention ? (
+        {focusLine ? (
           <div className="focus-line">
             <span className="focus-k">Focus</span>
-            <span>{mindLog.intention}</span>
+            <span>{focusLine}</span>
           </div>
         ) : null}
 
@@ -374,6 +397,11 @@ export default function TodayClient({
           &ldquo;{gem.text}&rdquo; <span className="muted">{gem.source}</span>
         </div>
       </div>
+
+      {/* Time-aware in-app reminders, computed in code from the clock. */}
+      {isToday ? (
+        <Nudges sleepConfig={sleepConfig} sleepLog={sleepLog} dietWindow={dietWindow} />
+      ) : null}
 
       {error ? <div className="alert alert-error">{error}</div> : null}
 

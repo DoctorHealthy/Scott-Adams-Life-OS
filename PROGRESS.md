@@ -1,32 +1,31 @@
 # Build Progress
 
-Quick state of the build so we resume fast.
+Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.md (section 15 milestones).
 
 ## Done and working
-- Phase 1: Next.js + Supabase auth, login, dashboard (Home), four tables with RLS.
-- Phase 2: editable systems engine, daily check-in, history, entry delete, system reordering.
-- Phase 3: Gemini coach wired (model gemini-2.5-flash), Big Five seeded.
-- Coach 503 handling: retry + fallback model.
-- Playbooks built and real (match the clean Diet design): Diet, Sleep, Exercise.
-  - Diet: editable targets (maint ~3100, lean-gain ~3350, protein ~170, water), meal menu with custom meals, grouped shopping list, snacks, water tracking.
-  - Sleep: wake-time shift stepper, morning-light reminder, reading-anchored wind-down, auto-filled wake/bed.
-  - Exercise: editable Ondra warm-up, ankle prehab, session menu, weekly target 1-7, floor + streak tracking.
+- Phases 1-3: auth, four tables + RLS, editable systems engine, history, Gemini coach (gemini-2.5-flash, retry + fallback).
+- All five playbooks real and clean: Diet, Sleep, Exercise, Mind (vision, gems, reframe library with pin + categories), Morning & schedule (Eisenhower matrix, personal only).
+- Today v2.1 (M1 complete): calm single column; energy headline; gem + one code-derived dynamic focus line; five collapsed rows in day order (Sleep, Schedule, Training, Diet, Mind); diet quick-entry steppers prefilled; Mind journal (intention + reflection + Private + Save together); compact Goals quarter card; Review and Ask as modals; day navigation; time-aware in-app nudges rewired.
+- Daily coach review grounded in code-computed numbers (never invents them).
 
-## In flight (was testing when we paused)
-- Design pass: make the editable lists compact (× inline on the row, tighter spacing) and match Diet across Exercise/Sleep.
-- Eating window: align meal 3 row, removed "no fasting" wording.
-- Coach reformat: new format from coach-persona.md (Verdict, the read, the one move, Tomorrow plan), no all-caps blocks.
+## Milestones (MASTER-BUILD-SPEC.md section 15)
+- M1 Today cleanup to spec: DONE.
+- M2 Goals/Projects (goals table + full year view): next.
+- M3 Weekly review.
+- M4 Trends + monthly review + pattern-finding.
+- M5 Coach upgrade (root-cause + concrete fix, vision tie-ins).
+- M6 Reframe library verification pass (mostly built already).
+- M7 Two users + sharing (partner view, visibility toggles, RLS).
+- M8 Onboarding wizard.
+- M9 PWA + deploy to Vercel.
+- M10 Reminders engine (cron-job.org + Telegram + web push), fast-follow.
 
-## Next up
-1. Finish testing the design + coach fixes.
-2. Build the last two playbooks to complete the Big Five:
-   - Mind: Stoic/reframe practice, daily gem, evening reflection.
-   - Morning & schedule: protect pre-3pm hours, personal Eisenhower matrix (life + ventures, no work tasks).
-3. Weekly review session.
-4. Second user + shared progress + onboarding wizard (for girlfriend).
-5. PWA polish + deploy to Vercel (make it live online).
+## Known state notes
+- Goals currently stored in users.coaching_prefs.goals (jsonb); M2 migrates them to a dedicated goals table (spec section 14) and builds the full /goals year view (placeholder today).
+- CoachBriefing component and /api/coach/briefing route are orphaned by the v2.1 top-card cut; remove or repurpose when convenient.
+- Verify each milestone with: npm run typecheck && npm run build.
 
 ## How to resume
-- Open Claude Code (desktop app) in this folder.
-- Paste: "Read PROGRESS.md and coach-knowledge/, restart the dev server, and let's continue from Next up."
-- Keys are in .env.local. Reminder: rotate the Supabase secret key and Gemini key before going live, since they were shared in chat.
+- Open Claude Code in this folder. It reads MASTER-BUILD-SPEC.md, CLAUDE.md, coach-knowledge/, system-playbooks/, Today-Design-Spec.md, and this file, then continues from the next milestone.
+- Keys are in .env.local. Rotate the Supabase secret key and Gemini key before going live (they were shared in chat earlier).
+- Mark runs the dev server himself: npm.cmd run dev.
