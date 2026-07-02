@@ -168,6 +168,11 @@ export function buildAllSeries(args: {
       if (clockDiffMin(r.wakeMin, targetWake) <= WAKE_TOLERANCE_MIN) wakesWithin++;
     }
   }
+  // Time-of-day charts anchor to a stable window around the target (target
+  // plus or minus 3 hours) so the target line sits mid-chart and the line
+  // reads as "above or below target," not auto-zoomed noise.
+  const TIME_WINDOW = 180;
+  const bedTarget = hhmmToMin(targetBedtime(sleepConfig));
   out.push({
     key: "wake",
     label: "Wake time",
@@ -176,11 +181,13 @@ export function buildAllSeries(args: {
     target: targetWake,
     targetLabel: `target ${sleepConfig.currentWake}`,
     isTime: true,
+    yMinHint: targetWake - TIME_WINDOW,
+    yMaxHint: targetWake + TIME_WINDOW,
     summary:
       wakesLogged > 0
         ? `Wake consistency: ${Math.round(
             (wakesWithin / wakesLogged) * 100
-          )}% of logged wakes within 30 min of target.`
+          )}% of logged wakes within 30 min of target. Below the line is earlier.`
         : undefined,
   });
   out.push({
@@ -188,9 +195,12 @@ export function buildAllSeries(args: {
     label: "Bedtime",
     group: "Sleep",
     points: pts((r) => r.bedMin),
-    target: hhmmToMin(targetBedtime(sleepConfig)),
+    target: bedTarget,
     targetLabel: `target ${targetBedtime(sleepConfig)}`,
     isTime: true,
+    yMinHint: bedTarget - TIME_WINDOW,
+    yMaxHint: bedTarget + TIME_WINDOW,
+    summary: "Below the line is earlier than target.",
   });
   out.push({
     key: "sleepDuration",
