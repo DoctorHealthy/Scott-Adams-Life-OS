@@ -13,8 +13,13 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
 - M2 Goals/Projects (goals table + full year view): DONE. Requires running
   supabase/migrations/0003_goals.sql in the Supabase SQL editor once; it also
   migrates the old jsonb goals across and strips them from coaching_prefs.
-- M3 Weekly review: next.
-- M4 Trends + monthly review + pattern-finding.
+- M3 Weekly review: DONE. Requires running supabase/migrations/0004_reviews.sql
+  once. /weekly page: code-computed 7-day stats (adherence + autopilot/willpower
+  labels, energy-to-habit correlations, sleep step, goal movement vs the prior
+  stored review), coach narration, keepable in the reviews table, review-day
+  setting (default Sunday), Today card highlighted on the chosen day.
+- M4 Trends + monthly review + pattern-finding: next. The reviews table + the
+  weekly stats/correlations code are reusable for monthly.
 - M5 Coach upgrade (root-cause + concrete fix, vision tie-ins).
 - M6 Reframe library verification pass (mostly built already).
 - M7 Two users + sharing (partner view, visibility toggles, RLS).

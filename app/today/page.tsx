@@ -8,6 +8,7 @@ import { readSleepConfig } from "@/lib/sleep/sleep";
 import { readExerciseConfig } from "@/lib/exercise/exercise";
 import { readScheduleConfig } from "@/lib/schedule/schedule";
 import { goalFromRow, type GoalRow } from "@/lib/goals/goals";
+import { readReviewConfig } from "@/lib/review/config";
 import type { DietMeal } from "@/lib/diet/meals";
 import type { System } from "@/lib/types";
 import type { RecentDay } from "./TodayClient";
@@ -72,6 +73,7 @@ export default async function TodayPage() {
           goals={((goalRows as GoalRow[]) ?? []).map((r) =>
             goalFromRow(r, (systems as System[]) ?? [])
           )}
+          reviewWeeklyDay={readReviewConfig(profile?.coaching_prefs).weeklyDay}
         />
       </main>
     </div>

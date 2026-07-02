@@ -69,6 +69,7 @@ export default function TodayClient({
   dietWindow,
   recent,
   goals,
+  reviewWeeklyDay,
 }: {
   userId: string;
   systems: System[];
@@ -80,6 +81,7 @@ export default function TodayClient({
   dietWindow: DietWindow;
   recent: RecentDay[];
   goals: Goal[];
+  reviewWeeklyDay: number;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -534,6 +536,21 @@ export default function TodayClient({
         onPersist={persistGoals}
         fullViewHref="/goals"
       />
+
+      {/* Weekly review entry point, highlighted on the chosen review day. */}
+      <Link
+        href="/weekly"
+        className={`weekly-card${
+          isToday && new Date().getDay() === reviewWeeklyDay ? " due" : ""
+        }`}
+      >
+        <span className="weekly-card-title">Weekly review</span>
+        <span className="weekly-card-sub muted">
+          {isToday && new Date().getDay() === reviewWeeklyDay
+            ? "Ready today. Read your week."
+            : "Autopilot vs willpower, patterns, next week."}
+        </span>
+      </Link>
 
       {/* Actions: Save day governs the whole entry, so it lives here at the
           page level, always visible, not buried inside a collapsed row. */}

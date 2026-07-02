@@ -310,6 +310,195 @@ Now write today's briefing exactly as instructed above.
 `.trim();
 }
 
+// ---------- Weekly review ----------
+
+export const WEEKLY_REVIEW_TASK = `
+=====  YOUR TASK NOW: WEEKLY REVIEW  =====
+Run the weekly review off the DATA block below. It is the only source of truth.
+
+HARD RULES
+- Every number you state comes from the DATA block. Never compute, estimate, or
+  invent one (energy, adherence counts, correlations, streaks, wake times, goal
+  percentages). If something is missing, say "not logged".
+- The correlations in the DATA are already computed. Quote them; do not derive
+  new ones or claim a pattern the data does not show.
+- Persona: hardcore, directive, strategic, tight. No filler, no preamble, no
+  emojis, no em dashes, no double dashes.
+- Respect the user's constraints (see profile).
+
+FORMAT, exactly this, plain text only. No markdown symbols, no all-caps headers.
+Use the small lowercase-style labels shown.
+
+Verdict: one punchy line naming the week's single most important truth.
+
+Then a blank line, then the read with NO label: 3 to 5 tight sentences.
+Name which systems ran on autopilot and which still needed willpower (use the
+counts). Call out the strongest energy-to-habit correlation in plain language
+(for example, energy runs higher on training days). Note goal movement if any
+goal moved.
+
+Cut or shrink: name the one system to shrink, move, or cut this week and why,
+one or two lines. Be concrete about the change.
+
+Campaign: one line on the sleep-shift step. If eligible to advance, say to
+advance to the next wake target; if not, say to keep holding the current wake.
+
+Next week: 2 to 3 orders for the coming week, one per line, each tied to the
+data above.
+
+Keep the whole thing under about 280 words. Orders, not essays.
+`.trim();
+
+type SystemWeekLike = {
+  name: string;
+  done: number;
+  floor: number;
+  skip: number;
+  notLogged: number;
+  label: "autopilot" | "willpower" | "attention";
+};
+
+type CorrelationLike = {
+  name: string;
+  energyOn: number;
+  energyOff: number;
+  gap: number;
+  daysOn: number;
+  daysOff: number;
+};
+
+type GoalWeekLike = {
+  title: string;
+  progress: number;
+  delta: number | null;
+  linked: boolean;
+};
+
+type WeeklyStatsLike = {
+  start: string;
+  end: string;
+  daysLogged: number;
+  energy: {
+    avg: number | null;
+    min: number | null;
+    max: number | null;
+    direction: string;
+    count: number;
+  };
+  systems: SystemWeekLike[];
+  correlations: CorrelationLike[];
+  candidate: { name: string } | null;
+  sleep: {
+    stepNumber: number;
+    currentWake: string;
+    targetBed: string;
+    holdStreak: number;
+    holdDays: number;
+    eligible: boolean;
+    nextWake: string;
+    atGoal: boolean;
+    latestWake: string | null;
+    driftMin: number | null;
+  };
+  goals: GoalWeekLike[];
+};
+
+export function buildWeeklyReviewPrompt(args: {
+  profile: ProfileLike | null;
+  stats: WeeklyStatsLike;
+}): string {
+  const { profile, stats: s } = args;
+
+  const p = profile;
+  const profileBlock = p
+    ? [
+        `Name: ${p.name ?? "unknown"}`,
+        `Constraints: ${fmtConstraints(p.constraints)}`,
+      ].join("\n")
+    : "Profile not set.";
+
+  const systemLines = s.systems
+    .map(
+      (x) =>
+        `- ${x.name}: ${x.done} done, ${x.floor} floor, ${x.skip} skip, ${x.notLogged} not logged  [${x.label}]`
+    )
+    .join("\n");
+
+  const corrLines = s.correlations.length
+    ? s.correlations
+        .map(
+          (c) =>
+            `- ${c.name}: energy ${c.energyOn} on done days (${c.daysOn}d) vs ${c.energyOff} on other days (${c.daysOff}d), gap ${c.gap > 0 ? "+" : ""}${c.gap}`
+        )
+        .join("\n")
+    : "- none strong enough to report this week";
+
+  const goalLines = s.goals.length
+    ? s.goals
+        .map(
+          (g) =>
+            `- ${g.title}: ${g.progress}%${
+              g.delta == null
+                ? " (baseline, no prior review)"
+                : g.delta === 0
+                  ? " (no change)"
+                  : ` (${g.delta > 0 ? "+" : ""}${g.delta} pts since last review)`
+            }${g.linked ? " [from systems]" : " [manual]"}`
+        )
+        .join("\n")
+    : "- no active goals";
+
+  const drift =
+    s.sleep.driftMin == null
+      ? "no wake logged"
+      : s.sleep.driftMin > 0
+        ? `${s.sleep.driftMin} min late`
+        : s.sleep.driftMin < 0
+          ? `${-s.sleep.driftMin} min early`
+          : "on target";
+
+  return `
+=====  DATA (computed by the app; treat as exact, do not recompute)  =====
+
+USER PROFILE
+${profileBlock}
+
+WEEK UNDER REVIEW: ${s.start} to ${s.end} (${s.daysLogged} of 7 days logged)
+
+ENERGY
+- Average: ${s.energy.avg ?? "not logged"} (over ${s.energy.count} logged days)
+- Range: ${s.energy.min ?? "?"} to ${s.energy.max ?? "?"}
+- Direction across the week: ${s.energy.direction}
+
+SYSTEM ADHERENCE (status counts over the 7 days; label is the code's read)
+${systemLines || "- no active systems"}
+
+ENERGY-TO-HABIT CORRELATIONS (computed; quote these, do not invent others)
+${corrLines}
+
+ONE SYSTEM TO RECONSIDER (flagged by the code as the weakest this week)
+- ${s.candidate ? s.candidate.name : "none flagged; adherence held"}
+
+SLEEP-SHIFT CAMPAIGN
+- On step ${s.sleep.stepNumber}, current wake target ${s.sleep.currentWake}, bed ${s.sleep.targetBed}
+- Latest logged wake: ${s.sleep.latestWake ?? "not logged"} (${drift})
+- Hold streak: ${s.sleep.holdStreak} of ${s.sleep.holdDays} needed${
+    s.sleep.atGoal
+      ? " (already at goal wake)"
+      : s.sleep.eligible
+        ? ` (eligible: advance to ${s.sleep.nextWake})`
+        : " (keep holding)"
+  }
+
+GOAL MOVEMENT
+${goalLines}
+
+=====  END DATA  =====
+
+Now produce the WEEKLY REVIEW exactly as instructed above.
+`.trim();
+}
+
 // ---------- Ask the coach ----------
 
 export const ASK_TASK = `

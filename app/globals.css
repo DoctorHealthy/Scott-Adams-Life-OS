@@ -2333,6 +2333,92 @@ textarea {
   margin-top: 10px;
 }
 
+/* ---------- Weekly review ---------- */
+.weekly-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  text-decoration: none;
+  color: inherit;
+}
+.weekly-card:hover {
+  border-color: var(--accent);
+}
+.weekly-card.due {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+}
+.weekly-card-title {
+  font-weight: 600;
+}
+.weekly-card-sub {
+  font-size: 13px;
+}
+
+.review-stat-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.review-stat-row:last-child {
+  border-bottom: none;
+}
+
+.review-sys-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.review-sys-row:last-child {
+  border-bottom: none;
+}
+.review-sys-name {
+  font-weight: 600;
+  min-width: 92px;
+}
+.review-sys-counts {
+  flex: 1;
+  font-size: 13px;
+}
+.review-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.badge-autopilot {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 45%, var(--border));
+}
+.badge-willpower {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--border));
+}
+.badge-attention {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 45%, var(--border));
+}
+.review-day-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.review-day-select select {
+  width: auto;
+}
+
 /* ---------- Goals quarter card ---------- */
 .quarter-grid {
   display: grid;
