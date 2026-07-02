@@ -13,100 +13,107 @@ const LABEL_TEXT: Record<WeeklyStats["systems"][number]["label"], string> = {
   attention: "needs attention",
 };
 
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="review-row">
+      <span className="rk">{k}</span>
+      <span className="rv">{v}</span>
+    </div>
+  );
+}
+
 function StatsView({ stats }: { stats: WeeklyStats }) {
   const e = stats.energy;
   return (
     <div className="stack">
       <div className="card">
         <div className="block-title">Energy</div>
-        <div className="review-stat-row">
-          <span>Average</span>
-          <span>{e.avg ?? "not logged"}{e.avg != null ? " / 10" : ""}</span>
-        </div>
-        <div className="review-stat-row">
-          <span>Range</span>
-          <span>{e.min != null ? `${e.min} to ${e.max}` : "not logged"}</span>
-        </div>
-        <div className="review-stat-row">
-          <span>Direction</span>
-          <span>{e.direction}</span>
-        </div>
-        <div className="review-stat-row">
-          <span>Days logged</span>
-          <span>{stats.daysLogged} of 7</span>
+        <div className="review-rows">
+          <Row k="Average" v={e.avg != null ? `${e.avg} / 10` : "not logged"} />
+          <Row k="Range" v={e.min != null ? `${e.min} to ${e.max}` : "not logged"} />
+          <Row k="Direction" v={e.direction} />
+          <Row k="Days logged" v={`${stats.daysLogged} of 7`} />
         </div>
       </div>
 
       <div className="card">
         <div className="block-title">System adherence</div>
-        {stats.systems.map((s) => (
-          <div className="review-sys-row" key={s.id}>
-            <span className="review-sys-name">{s.name}</span>
-            <span className="review-sys-counts muted">
-              {s.done} done, {s.floor} floor, {s.skip} skip
-            </span>
-            <span className={`review-badge badge-${s.label}`}>
-              {LABEL_TEXT[s.label]}
-            </span>
-          </div>
-        ))}
+        <div className="review-rows">
+          {stats.systems.map((s) => (
+            <div className="review-sys-row" key={s.id}>
+              <div className="review-sys-info">
+                <span className="review-sys-name">{s.name}</span>
+                <span className="review-sys-counts muted">
+                  {s.done} done, {s.floor} floor, {s.skip} skip
+                </span>
+              </div>
+              <span className={`review-badge badge-${s.label}`}>
+                {LABEL_TEXT[s.label]}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="card">
         <div className="block-title">Energy patterns</div>
         {stats.correlations.length === 0 ? (
-          <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+          <p className="muted" style={{ margin: "8px 0 0", fontSize: 14 }}>
             No pattern strong enough to call this week. Keep logging.
           </p>
         ) : (
-          stats.correlations.map((c) => (
-            <div className="review-stat-row" key={c.name}>
-              <span>{c.name}</span>
-              <span>
-                {c.energyOn} on done days vs {c.energyOff} otherwise (
-                {c.gap > 0 ? "+" : ""}
-                {c.gap})
-              </span>
-            </div>
-          ))
+          <div className="review-rows">
+            {stats.correlations.map((c) => (
+              <Row
+                key={c.name}
+                k={c.name}
+                v={`${c.energyOn} on done days vs ${c.energyOff} otherwise (${
+                  c.gap > 0 ? "+" : ""
+                }${c.gap})`}
+              />
+            ))}
+          </div>
         )}
       </div>
 
       <div className="card">
         <div className="block-title">Sleep-shift campaign</div>
-        <div className="review-stat-row">
-          <span>Step</span>
-          <span>{stats.sleep.stepNumber}, wake target {stats.sleep.currentWake}</span>
-        </div>
-        <div className="review-stat-row">
-          <span>Hold streak</span>
-          <span>
-            {stats.sleep.holdStreak} of {stats.sleep.holdDays}
-            {stats.sleep.atGoal
-              ? " (at goal)"
-              : stats.sleep.eligible
-                ? ` (advance to ${stats.sleep.nextWake})`
-                : " (keep holding)"}
-          </span>
+        <div className="review-rows">
+          <Row
+            k="Step"
+            v={`${stats.sleep.stepNumber}, wake target ${stats.sleep.currentWake}`}
+          />
+          <Row
+            k="Hold streak"
+            v={`${stats.sleep.holdStreak} of ${stats.sleep.holdDays}${
+              stats.sleep.atGoal
+                ? " (at goal)"
+                : stats.sleep.eligible
+                  ? ` (advance to ${stats.sleep.nextWake})`
+                  : " (keep holding)"
+            }`}
+          />
         </div>
       </div>
 
       {stats.goals.length > 0 ? (
         <div className="card">
           <div className="block-title">Goal movement</div>
-          {stats.goals.map((g) => (
-            <div className="review-stat-row" key={g.id}>
-              <span>{g.title}</span>
-              <span>
-                {g.progress}%
-                {g.delta == null
-                  ? " (baseline)"
-                  : g.delta === 0
-                    ? " (no change)"
-                    : ` (${g.delta > 0 ? "+" : ""}${g.delta} pts)`}
-              </span>
-            </div>
-          ))}
+          <div className="review-rows">
+            {stats.goals.map((g) => (
+              <Row
+                key={g.id}
+                k={g.title}
+                v={`${g.progress}%${
+                  g.delta == null
+                    ? " (baseline)"
+                    : g.delta === 0
+                      ? " (no change)"
+                      : ` (${g.delta > 0 ? "+" : ""}${g.delta} pts)`
+                }`}
+              />
+            ))}
+          </div>
         </div>
       ) : null}
     </div>

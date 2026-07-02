@@ -540,16 +540,12 @@ export default function TodayClient({
       {/* Weekly review entry point, highlighted on the chosen review day. */}
       <Link
         href="/weekly"
-        className={`weekly-card${
+        className={`btn weekly-btn${
           isToday && new Date().getDay() === reviewWeeklyDay ? " due" : ""
         }`}
       >
-        <span className="weekly-card-title">Weekly review</span>
-        <span className="weekly-card-sub muted">
-          {isToday && new Date().getDay() === reviewWeeklyDay
-            ? "Ready today. Read your week."
-            : "Autopilot vs willpower, patterns, next week."}
-        </span>
+        Weekly review
+        {isToday && new Date().getDay() === reviewWeeklyDay ? " (ready)" : ""}
       </Link>
 
       {/* Actions: Save day governs the whole entry, so it lives here at the

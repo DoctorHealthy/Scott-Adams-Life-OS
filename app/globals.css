@@ -2334,62 +2334,65 @@ textarea {
 }
 
 /* ---------- Weekly review ---------- */
-.weekly-card {
+.weekly-btn {
+  width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel);
-  text-decoration: none;
-  color: inherit;
+  align-items: center;
+  justify-content: center;
 }
-.weekly-card:hover {
+.weekly-btn.due {
   border-color: var(--accent);
-}
-.weekly-card.due {
-  border-color: var(--accent);
+  color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--panel));
 }
-.weekly-card-title {
-  font-weight: 600;
-}
-.weekly-card-sub {
-  font-size: 13px;
-}
 
-.review-stat-row {
-  display: flex;
+/* Label / value rows shared by the review cards. */
+.review-rows {
+  margin-top: 12px;
+}
+.review-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
+  column-gap: 20px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
-.review-stat-row:last-child {
+.review-row:last-child {
   border-bottom: none;
+}
+.review-row .rk {
+  color: var(--muted);
+}
+.review-row .rv {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .review-sys-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 10px;
-  padding: 7px 0;
+  column-gap: 16px;
+  padding: 9px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 14px;
 }
 .review-sys-row:last-child {
   border-bottom: none;
 }
+.review-sys-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
 .review-sys-name {
   font-weight: 600;
-  min-width: 92px;
+  font-size: 14px;
 }
 .review-sys-counts {
-  flex: 1;
-  font-size: 13px;
+  font-size: 12px;
 }
 .review-badge {
   font-size: 11px;
