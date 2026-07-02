@@ -7,7 +7,9 @@ import { localDateStr } from "@/lib/constants";
 import { computeTargets } from "@/lib/diet/targets";
 import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
 import { readSleepConfig } from "@/lib/sleep/sleep";
-import { buildTrendSeries, type TrendEntry } from "@/lib/trends/trends";
+import { goalFromRow, type GoalRow } from "@/lib/goals/goals";
+import { buildAllSeries, type ReviewSnapshot, type TrendEntry } from "@/lib/trends/trends";
+import { readTrendMetrics } from "@/lib/trends/config";
 import type { System } from "@/lib/types";
 
 export default async function TrendsPage() {
@@ -19,35 +21,69 @@ export default async function TrendsPage() {
 
   const end = localDateStr();
 
-  const [{ data: systems }, { data: profile }, { data: entries }] =
-    await Promise.all([
-      supabase
-        .from("systems")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      supabase.from("users").select("*").eq("id", user.id).single(),
-      supabase
-        .from("entries")
-        .select("date, energy_1_10, system_statuses, meals, module_logs")
-        .eq("user_id", user.id)
-        .lte("date", end)
-        .order("date", { ascending: false })
-        .limit(90),
-    ]);
+  const [
+    { data: systems },
+    { data: profile },
+    { data: entries },
+    { data: goalRows },
+    { data: reviews },
+  ] = await Promise.all([
+    supabase
+      .from("systems")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    supabase.from("users").select("*").eq("id", user.id).single(),
+    supabase
+      .from("entries")
+      .select("date, energy_1_10, system_statuses, meals, module_logs")
+      .eq("user_id", user.id)
+      .lte("date", end)
+      .order("date", { ascending: false })
+      .limit(90),
+    supabase
+      .from("goals")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("reviews")
+      .select("period_end, stats")
+      .eq("user_id", user.id)
+      .order("period_end", { ascending: true }),
+  ]);
 
+  const sys = (systems as System[]) ?? [];
   const dietConfig = readDietConfig(profile?.coaching_prefs);
   const targets = effectiveTargets(computeTargets(profile ?? null), dietConfig.targets);
+  const goals = ((goalRows as GoalRow[]) ?? []).map((r) => goalFromRow(r, sys));
 
-  const series = buildTrendSeries({
+  const reviewSnaps: ReviewSnapshot[] = (
+    (reviews as { period_end: string; stats: { goalSnapshot?: { id: string; progress: number }[] } }[]) ??
+    []
+  ).map((r) => ({
+    period_end: r.period_end,
+    goalSnapshot: r.stats?.goalSnapshot ?? [],
+  }));
+
+  const allSeries = buildAllSeries({
     end,
     days: 90,
     entries: (entries ?? []) as TrendEntry[],
-    systems: (systems as System[]) ?? [],
+    systems: sys,
     sleepConfig: readSleepConfig(profile?.coaching_prefs),
-    proteinTarget: targets.protein,
+    targets,
+    goals,
+    reviews: reviewSnaps,
   });
+
+  // Selected keys, filtered to what actually exists (drops deleted systems/goals).
+  const available = new Set(allSeries.map((s) => s.key));
+  const selected = readTrendMetrics(profile?.coaching_prefs).filter((k) =>
+    available.has(k)
+  );
 
   return (
     <div className="shell">
@@ -58,12 +94,11 @@ export default async function TrendsPage() {
             <div className="eyebrow">Trends</div>
             <h1 style={{ marginTop: 6 }}>The lines that matter</h1>
             <p className="muted" style={{ marginTop: 6 }}>
-              Energy, wake time, adherence, protein, weight. All computed from
-              your logs.
+              Pick the trends worth watching. All computed from your logs.
             </p>
           </div>
 
-          <TrendsView series={series} />
+          <TrendsView allSeries={allSeries} initialSelected={selected} />
 
           <div className="btn-row">
             <Link href="/monthly" className="btn btn-auto">

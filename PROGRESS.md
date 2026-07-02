@@ -18,13 +18,16 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   labels, energy-to-habit correlations, sleep step, goal movement vs the prior
   stored review), coach narration, keepable in the reviews table, review-day
   setting (default Sunday), Today card highlighted on the chosen day.
-- M4 Trends + monthly review + pattern-finding: DONE. /trends (energy, wake
-  time vs target, adherence, protein, weight; 30/90 day toggle; pure-SVG small
-  multiples; Trends in the top nav). Weight is now loggable in the Diet row
-  (a measurement, never prefilled). /monthly review: month numbers + deltas vs
-  the full previous month computed in code, per-system counts, goal movement
-  vs the prior monthly review, coach narration, stored in reviews. No new
-  migration needed (reuses the reviews table).
+- M4 Trends + monthly review + pattern-finding: DONE. /trends is a configurable
+  picker: a metric catalog (energy, wake, bed, sleep duration, overall
+  adherence, per-system rolling adherence, calories, protein, water, weight,
+  and goal-progress trajectories from stored review snapshots). User adds /
+  removes / reorders trends; selection persists in coaching_prefs.trends.metrics.
+  Charts are pure-SVG with inline styling (stroke/layout never depend on the CSS
+  bundle). 30/90 day toggle. Weight loggable in the Diet row (a measurement,
+  never prefilled). /monthly review: month numbers + deltas vs the full previous
+  month in code, per-system counts, goal movement, coach narration, stored in
+  reviews. No new migration (reuses the reviews table).
 - M5 Coach upgrade: next. Wire the trends/correlations into daily+weekly+monthly
   DATA blocks, root-cause + concrete reversal on every miss, vision tie-ins.
 - M5 Coach upgrade (root-cause + concrete fix, vision tie-ins).
