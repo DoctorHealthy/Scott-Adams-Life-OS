@@ -8,6 +8,22 @@ const QUARTERS: Quarter[] = [1, 2, 3, 4];
 
 type PersistResult = { ok: true } | { error: string } | void;
 
+// What drives this goal's bar, so a linked goal is never a mystery.
+function progressHint(g: Goal): string {
+  switch (g.link) {
+    case "sleep_wake":
+      return "Fills as your wake target shifts from your start time toward your goal wake. It moves when you advance the step in the Sleep playbook (after holding the current wake for a few days), not from a daily check.";
+    case "training_sessions":
+      return "Fills with your sessions this week against your weekly target. Log training and it moves on its own.";
+    case "diet_protein":
+      return "Fills with the share of recent days you hit your protein target. Log your protein and it moves on its own.";
+    default:
+      return g.milestones.length > 0
+        ? "Manual: fills as you check off the milestones below."
+        : "Manual: drag the slider to set it, or add milestones and it fills as you check them off.";
+  }
+}
+
 export default function GoalsCard({
   initialGoals,
   year,
@@ -266,6 +282,9 @@ export default function GoalsCard({
               {selected.link !== "manual" ? " (from your systems)" : ""}
             </span>
           </div>
+          <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
+            {progressHint(selected)}
+          </p>
 
           {selected.link === "manual" && selected.milestones.length === 0 ? (
             <div className="field">

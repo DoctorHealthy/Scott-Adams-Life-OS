@@ -519,26 +519,6 @@ export default function TodayClient({
                 placeholder="Cap the day here."
               />
             </div>
-            <div className="journal-controls">
-              <button
-                className="btn btn-primary btn-auto"
-                onClick={save}
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save day"}
-              </button>
-              <label className="check-row" style={{ margin: 0 }}>
-                <input
-                  type="checkbox"
-                  checked={isPrivate}
-                  onChange={(e) => mark(setIsPrivate)(e.target.checked)}
-                />
-                <span>Private. Only you can see this.</span>
-              </label>
-              <span className="save-status muted">
-                {saved && !dirty ? "Saved." : dirty ? "Unsaved." : "Up to date."}
-              </span>
-            </div>
             <RowFoot sys={mindSys} label="Vision and reframes" />
           </>
         )}
@@ -555,14 +535,32 @@ export default function TodayClient({
         fullViewHref="/goals"
       />
 
-      {/* Actions */}
+      {/* Actions: Save day governs the whole entry, so it lives here at the
+          page level, always visible, not buried inside a collapsed row. */}
       <div className="today-actions">
-        <button className="btn btn-primary" onClick={() => setReviewOpen(true)}>
+        <button className="btn btn-primary" onClick={save} disabled={saving}>
+          {saving ? "Saving..." : "Save day"}
+        </button>
+        <button className="btn" onClick={() => setReviewOpen(true)}>
           Review my day{isEvening ? " (ready)" : ""}
         </button>
         <button className="btn" onClick={() => setAskOpen(true)}>
           Ask the coach
         </button>
+      </div>
+
+      <div className="today-save-row">
+        <label className="check-row" style={{ margin: 0 }}>
+          <input
+            type="checkbox"
+            checked={isPrivate}
+            onChange={(e) => mark(setIsPrivate)(e.target.checked)}
+          />
+          <span>Private. Only you can see this (journal, reflection, notes).</span>
+        </label>
+        <span className="save-status muted">
+          {saved && !dirty ? "Saved." : dirty ? "Unsaved changes." : "Up to date."}
+        </span>
       </div>
 
       {reviewOpen ? (
