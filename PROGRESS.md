@@ -40,7 +40,11 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
 - Deferred polish: time-of-day trend charts (wake/bed) still read awkwardly;
   revisit the chart type later.
 - M5 Coach upgrade (root-cause + concrete fix, vision tie-ins).
-- M6 Reframe library verification pass (mostly built already).
+- M6 Reframe library cleanup: DONE. Each reframe is a bordered card matching the
+  Diet meal-row style, a pin ICON (SVG) instead of a text button, pinned items
+  move to a Pinned group at the top and no longer duplicate in their category,
+  pinned cards carry a category tag. Data verified duplicate-free. Fixed a stale
+  Mind link (/checkin -> /today).
 - M7 Two users + sharing (partner view, visibility toggles, RLS).
 - M8 Onboarding wizard.
 - M9 PWA + deploy to Vercel.
