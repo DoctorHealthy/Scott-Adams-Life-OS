@@ -112,3 +112,6 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
 - Open Claude Code in this folder. It reads MASTER-BUILD-SPEC.md, CLAUDE.md, coach-knowledge/, system-playbooks/, Today-Design-Spec.md, and this file, then continues from the next milestone.
 - Keys are in .env.local. Rotate the Supabase secret key and Gemini key before going live (they were shared in chat earlier).
 - Mark runs the dev server himself: npm.cmd run dev.
+
+## Deploy log
+- 2026-07-03: redeploy trigger (repo made public so Vercel Hobby runs a build regardless of commit author). No app changes.
