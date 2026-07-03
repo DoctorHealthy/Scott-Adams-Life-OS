@@ -32,13 +32,21 @@ export async function loadKnowledge(): Promise<string> {
 export async function userProfileSection(
   coachingPrefs: Record<string, unknown> | null | undefined
 ): Promise<string> {
+  // Coaching-style preference (editable on the Profile page) is honored live,
+  // so changing it takes effect immediately rather than only at onboarding.
+  const intake = (coachingPrefs?.intake ?? {}) as { coachingStyle?: unknown };
+  const styleLine =
+    typeof intake.coachingStyle === "string" && intake.coachingStyle
+      ? `\n\nCurrent coaching-style preference (honor this over any default): ${intake.coachingStyle}.`
+      : "";
+
   const brief = coachingPrefs?.profile_brief;
   if (typeof brief === "string" && brief.trim()) {
-    return `===== user-profile (from onboarding) =====\n${brief.trim()}`;
+    return `===== user-profile (from onboarding) =====\n${brief.trim()}${styleLine}`;
   }
   if (!markProfileCache) {
     const file = path.join(process.cwd(), "coach-knowledge", "your-profile.md");
     markProfileCache = (await readFile(file, "utf8")).trim();
   }
-  return `===== your-profile.md =====\n${markProfileCache}`;
+  return `===== your-profile.md =====\n${markProfileCache}${styleLine}`;
 }

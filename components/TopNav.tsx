@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/reminders", label: "Reminders" },
   { href: "/history", label: "History" },
   { href: "/systems", label: "Systems" },
+  { href: "/profile", label: "Profile" },
 ];
 
 export default function TopNav({ email }: { email?: string }) {

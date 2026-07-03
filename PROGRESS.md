@@ -115,3 +115,10 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
 
 ## Deploy log
 - 2026-07-03: redeploy trigger (repo made public so Vercel Hobby runs a build regardless of commit author). No app changes.
+- Profile page: /profile (top nav) edits name, age, sex, height, weight,
+  activity, timezone, coaching style; targets recompute live and on save;
+  timezone feeds reminders; coaching style now honored live in the coach
+  system prompt (userProfileSection). Fills the gap where stats could only be
+  set at onboarding and never edited.
+- 2026-07-03: cron reminder fix (middleware whitelisted /api/cron) verified
+  working end to end; use a 1-minute cron interval for near-on-time delivery.
