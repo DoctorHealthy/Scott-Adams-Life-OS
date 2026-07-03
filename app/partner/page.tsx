@@ -16,6 +16,7 @@ import {
   buildWeekPerson,
   progressDaysFromEntries,
   readHiddenSystems,
+  readHiddenGoals,
   type ProgressDay,
 } from "@/lib/partner/partner";
 import type { System, SystemStatus } from "@/lib/types";
@@ -181,6 +182,8 @@ export default async function PartnerPage() {
             friend={friend}
             mySystems={mySys.map((s) => ({ id: s.id, name: s.name }))}
             hiddenSystems={readHiddenSystems(profile?.coaching_prefs)}
+            myGoals={myGoals.map((g) => ({ id: g.id, title: g.title }))}
+            hiddenGoals={readHiddenGoals(profile?.coaching_prefs)}
           />
         </div>
       </main>

@@ -54,7 +54,14 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   reflections/intentions/meals never leave the owner while progress is shared
   even on private days. Partner goal progress computes only what shared data
   supports (diet-linked goals show "not shared", never a made-up number).
-- M8 Onboarding wizard.
+  Per-goal visibility added: 0006 migration hardens goals_select_friend RLS to
+  exclude the owner's hidden goals (coaching_prefs.sharing.hiddenGoals).
+- M8 Onboarding wizard: next. MUST also fix Today's single-user assumption:
+  TodayClient hardcodes 5 Big-Five rows by domain (lib domains Sleep/Diet/
+  Exercise/Flexible Schedule/Imagination), so a user with no matching systems
+  sees phantom rows without status buttons. M8 seeds each new user's own systems
+  from intake AND makes Today render the user's actual systems (rich cards for
+  Big-Five domains, generic rows for custom systems).
 - M9 PWA + deploy to Vercel.
 - M10 Reminders engine (cron-job.org + Telegram + web push), fast-follow.
 

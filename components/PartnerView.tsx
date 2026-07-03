@@ -7,6 +7,7 @@ import {
   respondFriend,
   removeFriend,
   setHiddenSystems,
+  setHiddenGoals,
 } from "@/app/partner/actions";
 import type { WeekPerson } from "@/lib/partner/partner";
 import type { SystemStatus } from "@/lib/types";
@@ -188,6 +189,8 @@ export default function PartnerView({
   friend,
   mySystems,
   hiddenSystems,
+  myGoals,
+  hiddenGoals,
 }: {
   userId: string;
   friendships: FriendshipRow[];
@@ -195,6 +198,8 @@ export default function PartnerView({
   friend: WeekPerson | null;
   mySystems: { id: string; name: string }[];
   hiddenSystems: string[];
+  myGoals: { id: string; title: string }[];
+  hiddenGoals: string[];
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -202,6 +207,7 @@ export default function PartnerView({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hidden, setHidden] = useState<string[]>(hiddenSystems);
+  const [hiddenG, setHiddenG] = useState<string[]>(hiddenGoals);
   const [showSettings, setShowSettings] = useState(false);
 
   const accepted = friendships.find((f) => f.status === "accepted") ?? null;
@@ -236,6 +242,15 @@ export default function PartnerView({
       : [...hidden, id];
     setHidden(next);
     await setHiddenSystems(next);
+    router.refresh();
+  }
+
+  async function toggleHiddenGoal(id: string) {
+    const next = hiddenG.includes(id)
+      ? hiddenG.filter((x) => x !== id)
+      : [...hiddenG, id];
+    setHiddenG(next);
+    await setHiddenGoals(next);
     router.refresh();
   }
 
@@ -341,6 +356,9 @@ export default function PartnerView({
                 Hidden systems are invisible to your partner. Journals and
                 reflections are never shared either way.
               </p>
+              <div className="muted" style={{ fontSize: 12, margin: "4px 0 6px" }}>
+                Systems
+              </div>
               {mySystems.map((s) => (
                 <label className="check-row" key={s.id}>
                   <input
@@ -351,6 +369,25 @@ export default function PartnerView({
                   <span>{s.name}</span>
                 </label>
               ))}
+
+              {myGoals.length > 0 ? (
+                <>
+                  <div className="muted" style={{ fontSize: 12, margin: "12px 0 6px" }}>
+                    Goals
+                  </div>
+                  {myGoals.map((g) => (
+                    <label className="check-row" key={g.id}>
+                      <input
+                        type="checkbox"
+                        checked={!hiddenG.includes(g.id)}
+                        onChange={() => toggleHiddenGoal(g.id)}
+                      />
+                      <span>{g.title}</span>
+                    </label>
+                  ))}
+                </>
+              ) : null}
+
               <div className="btn-row" style={{ marginTop: 12 }}>
                 <button
                   className="btn btn-ghost btn-auto btn-danger"
@@ -367,6 +404,9 @@ export default function PartnerView({
           ) : (
             <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
               {mySystems.length - hidden.length} of {mySystems.length} systems
+              {myGoals.length > 0
+                ? ` and ${myGoals.length - hiddenG.length} of ${myGoals.length} goals`
+                : ""}{" "}
               visible to your partner.
             </p>
           )}

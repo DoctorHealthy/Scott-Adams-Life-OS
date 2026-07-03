@@ -85,3 +85,35 @@ export async function setHiddenSystems(ids: string[]): Promise<ActionResult> {
   revalidatePath("/partner");
   return { ok: true };
 }
+
+export async function setHiddenGoals(ids: string[]): Promise<ActionResult> {
+  if (!Array.isArray(ids) || ids.some((x) => typeof x !== "string")) {
+    return { error: "Invalid selection." };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("coaching_prefs")
+    .eq("id", user.id)
+    .single();
+
+  const prefs = (profile?.coaching_prefs ?? {}) as Record<string, unknown>;
+  const sharing = (prefs.sharing ?? {}) as Record<string, unknown>;
+  const next = {
+    ...prefs,
+    sharing: { ...sharing, hiddenGoals: ids.slice(0, 100) },
+  };
+
+  const { error } = await supabase
+    .from("users")
+    .update({ coaching_prefs: next })
+    .eq("id", user.id);
+  if (error) return { error: error.message };
+  revalidatePath("/partner");
+  return { ok: true };
+}

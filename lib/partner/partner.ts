@@ -169,6 +169,16 @@ export function readHiddenSystems(
     : [];
 }
 
+// Read the owner's hidden-goal list from their coaching_prefs.
+export function readHiddenGoals(
+  coachingPrefs: Record<string, unknown> | null | undefined
+): string[] {
+  const s = (coachingPrefs?.sharing ?? {}) as { hiddenGoals?: unknown };
+  return Array.isArray(s.hiddenGoals)
+    ? s.hiddenGoals.filter((x): x is string => typeof x === "string")
+    : [];
+}
+
 // Turn own full entries into sanitized ProgressDay rows so both columns of the
 // partner view run through the identical code path.
 export function progressDaysFromEntries(
