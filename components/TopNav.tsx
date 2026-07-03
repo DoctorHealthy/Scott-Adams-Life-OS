@@ -7,6 +7,7 @@ import { signout } from "@/app/login/actions";
 const LINKS = [
   { href: "/today", label: "Today" },
   { href: "/trends", label: "Trends" },
+  { href: "/partner", label: "Partner" },
   { href: "/history", label: "History" },
   { href: "/systems", label: "Systems" },
 ];

@@ -45,7 +45,15 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   move to a Pinned group at the top and no longer duplicate in their category,
   pinned cards carry a category tag. Data verified duplicate-free. Fixed a stale
   Mind link (/checkin -> /today).
-- M7 Two users + sharing (partner view, visibility toggles, RLS).
+- M7 Two users + sharing: DONE. Requires running
+  supabase/migrations/0005_partner.sql once. /partner (in the top nav): link by
+  email (add_friend RPC; accept/decline), side-by-side week cards (energy row,
+  per-system status dots, streak, goal bars), per-system visibility toggles
+  (coaching_prefs.sharing.hiddenSystems), unlink. Privacy: the entries friend
+  RLS policy is REPLACED by the sanitizing partner_progress() function, so
+  reflections/intentions/meals never leave the owner while progress is shared
+  even on private days. Partner goal progress computes only what shared data
+  supports (diet-linked goals show "not shared", never a made-up number).
 - M8 Onboarding wizard.
 - M9 PWA + deploy to Vercel.
 - M10 Reminders engine (cron-job.org + Telegram + web push), fast-follow.
