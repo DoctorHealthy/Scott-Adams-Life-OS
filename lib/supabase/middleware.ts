@@ -40,7 +40,10 @@ export async function updateSession(request: NextRequest) {
     path === "/" ||
     path === "/offline" ||
     path.startsWith("/login") ||
-    path.startsWith("/auth");
+    path.startsWith("/auth") ||
+    // The cron endpoint is machine-called with no session; it protects itself
+    // with CRON_SECRET. Without this it 307-redirects to /login and never runs.
+    path.startsWith("/api/cron");
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
