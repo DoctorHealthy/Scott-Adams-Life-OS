@@ -72,7 +72,19 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
     userProfileSection(prefs) uses coaching_prefs.profile_brief when present,
     else falls back to your-profile.md (Mark). All 5 coach routes updated.
   - computeTargets is sex-aware (coaching_prefs.intake.sex; default male).
-- M9 PWA + deploy to Vercel.
+- M9 PWA + deploy: PWA DONE, deploy is Mark's to run (see DEPLOY.md).
+  - Installable PWA: app/manifest.ts (standalone, theme #0a0a0b, maskable icon),
+    layout metadata (apple-web-app, apple-touch-icon), icons generated in
+    /public by scripts/gen-icons.mjs (sharp), offline-tolerant service worker
+    (public/sw.js: network-first navigations, cache-first hashed assets, never
+    touches cross-origin Supabase/Gemini; push + notificationclick handlers as
+    the M10 seam) registered in production only via ServiceWorkerRegister,
+    /offline fallback page (static + public).
+  - Deploy bug fixed: outputFileTracingIncludes now ships coach-knowledge with
+    ALL coach routes + onboarding (was daily-only; others would 500 on Vercel).
+  - Before going live: rotate the Supabase secret + Gemini keys (were shared in
+    chat), set Vercel env vars, set Supabase Site/Redirect URLs. Runbook +
+    girlfriend signup note in DEPLOY.md.
 - M10 Reminders engine (cron-job.org + Telegram + web push), fast-follow.
 
 ## Known state notes
