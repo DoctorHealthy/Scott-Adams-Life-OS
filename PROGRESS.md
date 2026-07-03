@@ -85,7 +85,23 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   - Before going live: rotate the Supabase secret + Gemini keys (were shared in
     chat), set Vercel env vars, set Supabase Site/Redirect URLs. Runbook +
     girlfriend signup note in DEPLOY.md.
-- M10 Reminders engine (cron-job.org + Telegram + web push), fast-follow.
+- M10 Reminders engine: DONE. Requires running
+  supabase/migrations/0007_reminders.sql once, plus env vars TELEGRAM_BOT_TOKEN,
+  CRON_SECRET, NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+  (locally and on Vercel), plus a cron-job.org GET job on
+  /api/cron/reminders?secret=CRON_SECRET every 5 min.
+  - One engine (lib/reminders/engine.ts): automatic reminders computed from the
+    user's targets (morning light wake+15, wind-down bed-60, dinner at meal3;
+    skipped when already logged; per-item toggles) + custom reminders (label,
+    HH:MM, daily/weekdays/once, channel, optional system/goal link, pause).
+    All per-user, per-timezone (coaching_prefs.timezone, default Europe/Vienna).
+  - Channels behind one interface (channels.ts + deliver.ts): Telegram primary
+    (chat id captured via /start <code> + getUpdates scan, no webhook), Web
+    Push VAPID bonus (SW handlers shipped in M9). "auto" = telegram else push.
+  - Never double-sends: reminder_sends unique (user, key, local date) insert
+    gates every send; 'once' reminders self-disable; dead push subs pruned.
+  - /reminders page (top nav): channel setup, test send, auto list, full CRUD.
+  - PWA safe-area fix: env(safe-area-inset-*) padding on .shell for the notch.
 
 ## Known state notes
 - Goals live in the goals table; the link kind (sleep step, sessions/week, protein) is resolved in code from the linked system's domain. RLS already lets accepted friends read goals (for the M7 partner view).

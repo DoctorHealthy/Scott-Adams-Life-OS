@@ -58,8 +58,23 @@ you have been testing on, they are already applied.
 4. To link accounts: on the Partner page, one of you enters the other's signup
    email and sends a request; the other accepts on their Partner page.
 
-## Fast-follow, not part of this deploy
+## M10: reminders engine
 
-Phone push notifications (M10): cron-job.org pinging an API route, Telegram bot
-as the reliable channel, Web Push where iOS allows it. The service worker
-already has the push and notificationclick handlers in place as the seam.
+Built. Needs, on top of the section 3 env vars (both locally and on Vercel):
+
+- `TELEGRAM_BOT_TOKEN` (from @BotFather)
+- `CRON_SECRET` (any long random string; also used in the cron URL)
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+  (generate once with `npx web-push generate-vapid-keys`)
+
+Run `supabase/migrations/0007_reminders.sql` in the SQL editor once.
+
+cron-job.org: create a job hitting
+`https://YOUR-APP.vercel.app/api/cron/reminders?secret=YOUR_CRON_SECRET`
+every 5 minutes (GET). The route is idempotent: overlapping runs can never
+double-send (unique send-log insert gates every send).
+
+Each user connects channels on the Reminders page: Connect Telegram
+(open the bot, tap Start, then "complete the link") and/or Enable push
+(on iPhone: install the app to the home screen first, then enable from
+inside it). "Send me a test now" verifies the pipes.
