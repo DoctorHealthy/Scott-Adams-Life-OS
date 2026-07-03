@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { loadKnowledge } from "@/lib/coach/knowledge";
+import { loadKnowledge, userProfileSection } from "@/lib/coach/knowledge";
 import { generate, CoachBusyError } from "@/lib/ai/provider";
 import { ASK_TASK } from "@/lib/coach/prompts";
 
@@ -27,7 +27,17 @@ export async function POST(request: Request) {
 
   let system: string;
   try {
-    system = (await loadKnowledge()) + "\n\n" + ASK_TASK;
+    const { data: profile } = await supabase
+      .from("users")
+      .select("coaching_prefs")
+      .eq("id", user.id)
+      .single();
+    system =
+      (await loadKnowledge()) +
+      "\n\n" +
+      (await userProfileSection(profile?.coaching_prefs)) +
+      "\n\n" +
+      ASK_TASK;
   } catch (e) {
     return NextResponse.json(
       { error: `Could not load the coach knowledge base: ${(e as Error).message}` },

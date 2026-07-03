@@ -747,6 +747,53 @@ Now produce the MONTHLY REVIEW exactly as instructed above.
 `.trim();
 }
 
+// ---------- Onboarding proposal ----------
+
+export const ONBOARDING_TASK = `
+=====  YOUR TASK NOW: PROPOSE A PERSONALIZED LIFE OS  =====
+A new user finished the intake below. Propose their starting Big Five systems,
+two or three seed goals, and a short profile brief. They will edit everything
+before saving, so propose confidently.
+
+HARD RULES
+- You write TEXT ONLY: rules, floors, ceilings, anchors, goal titles, the
+  brief. You never state calorie numbers, macro targets, or any computed
+  quantity; the app computes those in code.
+- Ground everything in their intake: their level (never prescribe beginner work
+  to an advanced user or vice versa), their constraints and injuries, their
+  schedule, their stated failure modes.
+- Every system needs a floor that survives their worst day.
+- Coach voice per their stated style. Tight sentences. No emojis, no em dashes.
+
+OUTPUT: raw JSON only, no markdown fences, exactly this shape:
+{
+  "systems": [
+    { "domain": "Sleep", "name": "...", "rule": "...", "floor": "...", "ceiling": "...", "anchor": "..." },
+    { "domain": "Flexible Schedule", ... },
+    { "domain": "Imagination", ... },
+    { "domain": "Diet", ... },
+    { "domain": "Exercise", ... }
+  ],
+  "goals": [
+    { "title": "...", "why": "one word", "quarter": 1-4 (the current quarter), "link": "manual" | "sleep_wake" | "training_sessions" | "diet_protein" }
+  ],
+  "profileBrief": "markdown summary of who this user is, their constraints, schedule reality, failure modes, and coaching style, written for their coach to read before every session"
+}
+Exactly the five domains shown, in that order. 2 or 3 goals.
+`.trim();
+
+export function buildOnboardingPrompt(intakeSummary: string): string {
+  return `
+=====  INTAKE (the user's own answers)  =====
+
+${intakeSummary}
+
+=====  END INTAKE  =====
+
+Now produce the JSON proposal exactly as instructed above.
+`.trim();
+}
+
 // ---------- Ask the coach ----------
 
 export const ASK_TASK = `

@@ -44,6 +44,15 @@ export default async function TodayPage() {
         .order("created_at", { ascending: true }),
     ]);
 
+  // A brand-new account has no systems: run the onboarding wizard first.
+  // (A user who onboarded and later deactivated everything sees the empty
+  // state on Today instead.)
+  const onboarded = !!(profile?.coaching_prefs as { onboarded?: unknown } | null)
+    ?.onboarded;
+  if (((systems as System[]) ?? []).length === 0 && !onboarded) {
+    redirect("/onboarding");
+  }
+
   const dietConfig = readDietConfig(profile?.coaching_prefs);
   const targets = effectiveTargets(computeTargets(profile ?? null), dietConfig.targets);
   const sleepConfig = readSleepConfig(profile?.coaching_prefs);

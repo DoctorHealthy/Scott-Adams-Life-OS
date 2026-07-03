@@ -238,12 +238,20 @@ export default function TodayClient({
   const isToday = date === today;
   const tag = isToday ? "Today" : date === addDays(today, -1) ? "Yesterday" : null;
 
-  const sysByDomain = (d: string) => systems.find((s) => s.domain === d) ?? null;
-  const sleepSys = sysByDomain("Sleep");
-  const exSys = sysByDomain("Exercise");
-  const dietSys = sysByDomain("Diet");
-  const mindSys = sysByDomain("Imagination");
-  const schedSys = sysByDomain("Flexible Schedule");
+  // Render the user's ACTUAL systems (not a hardcoded Big Five), ordered by
+  // the flow of the day: sleep, schedule, training, diet, custom, mind last.
+  const DOMAIN_RANK: Record<string, number> = {
+    Sleep: 0,
+    "Flexible Schedule": 1,
+    Exercise: 2,
+    Diet: 3,
+    Imagination: 99,
+  };
+  const orderedSystems = [...systems].sort((a, b) => {
+    const ra = DOMAIN_RANK[a.domain ?? ""] ?? 10;
+    const rb = DOMAIN_RANK[b.domain ?? ""] ?? 10;
+    return ra - rb || a.sort_order - b.sort_order;
+  });
 
   const gem = gemForDate(date);
   const sessionDue = sessionForDate(exerciseConfig, date);
@@ -397,134 +405,168 @@ export default function TodayClient({
 
       {error ? <div className="alert alert-error">{error}</div> : null}
 
-      {/* Systems checklist, ordered by the flow of the day */}
-      <div className="syslist">
-        {renderRow(
-          "sleep",
-          "Sleep",
-          `Wake ${sleepConfig.currentWake}`,
-          sleepSys?.id,
-          <>
-            <SleepLogCard
-              config={sleepConfig}
-              value={sleepLog}
-              onChange={(v) => mark(setSleepLog)(v)}
-            />
-            <RowFoot sys={sleepSys} />
-          </>
-        )}
-
-        {renderRow(
-          "schedule",
-          "Morning & schedule",
-          undefined,
-          schedSys?.id,
-          <>
-            <div className="sched-cols">
-              <div>
-                <div className="sched-k">Morning block</div>
-                <ul className="sched-list">
-                  {schedule.morningBlock.map((b, i) => (
-                    <li key={i}>{b}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <div className="sched-k">Slot when free</div>
-                {schedule.slotWhenFree.length ? (
-                  <ul className="sched-list">
-                    {schedule.slotWhenFree.map((b, i) => (
-                      <li key={i}>{b}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                    Nothing queued.
-                  </p>
-                )}
-              </div>
-              <div>
-                <div className="sched-k">Fixed rocks</div>
-                {schedule.fixedRocks.length ? (
-                  <ul className="sched-list">
-                    {schedule.fixedRocks.map((b, i) => (
-                      <li key={i}>{b}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                    None set.
-                  </p>
-                )}
-              </div>
-            </div>
-            <RowFoot sys={schedSys} />
-          </>
-        )}
-
-        {renderRow(
-          "training",
-          "Training",
-          sessionDue,
-          exSys?.id,
-          <>
-            <ExerciseLogCard
-              config={exerciseConfig}
-              value={exerciseLog}
-              onChange={(v) => mark(setExerciseLog)(v)}
-            />
-            <RowFoot sys={exSys} />
-          </>
-        )}
-
-        {renderRow(
-          "diet",
-          "Diet",
-          `${dietLog.kcal} / ${targets.leanGain ?? "--"} kcal`,
-          dietSys?.id,
-          <>
-            <DietLog
-              catalog={catalog}
-              value={dietLog}
-              onChange={(v) => mark(setDietLog)(v)}
-              targets={targets}
-            />
-            <RowFoot sys={dietSys} />
-          </>
-        )}
-
-        {renderRow(
-          "mind",
-          "Mind",
-          mindLog.intention ? "intention set" : undefined,
-          mindSys?.id,
-          <>
-            <div className="field">
-              <label>Morning intention (one line)</label>
-              <input
-                value={mindLog.intention ?? ""}
-                onChange={(e) =>
-                  mark(setMindLog)({ intention: e.target.value || null })
-                }
-                placeholder="Set the day's posture"
-              />
-            </div>
-            <div className="field">
-              <label>Evening reflection</label>
-              <p className="journal-prompts muted">
-                What happened today? What did you do about it?
-              </p>
-              <textarea
-                rows={4}
-                value={reflection}
-                onChange={(e) => mark(setReflection)(e.target.value)}
-                placeholder="Cap the day here."
-              />
-            </div>
-            <RowFoot sys={mindSys} label="Vision and reframes" />
-          </>
-        )}
-      </div>
+      {/* Systems checklist: the user's real systems, ordered by day flow. */}
+      {orderedSystems.length === 0 ? (
+        <div className="card">
+          <div className="block-title">No systems yet</div>
+          <p className="muted" style={{ margin: "8px 0 12px", fontSize: 14 }}>
+            Your Life OS runs on systems. Set yours up in a few minutes.
+          </p>
+          <Link href="/onboarding" className="btn btn-primary btn-auto">
+            Set up my systems
+          </Link>
+        </div>
+      ) : (
+        <div className="syslist">
+          {orderedSystems.map((s) => {
+            switch (s.domain) {
+              case "Sleep":
+                return renderRow(
+                  s.id,
+                  s.name,
+                  `Wake ${sleepConfig.currentWake}`,
+                  s.id,
+                  <>
+                    <SleepLogCard
+                      config={sleepConfig}
+                      value={sleepLog}
+                      onChange={(v) => mark(setSleepLog)(v)}
+                    />
+                    <RowFoot sys={s} />
+                  </>
+                );
+              case "Flexible Schedule":
+                return renderRow(
+                  s.id,
+                  s.name,
+                  undefined,
+                  s.id,
+                  <>
+                    <div className="sched-cols">
+                      <div>
+                        <div className="sched-k">Morning block</div>
+                        <ul className="sched-list">
+                          {schedule.morningBlock.map((b, i) => (
+                            <li key={i}>{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="sched-k">Slot when free</div>
+                        {schedule.slotWhenFree.length ? (
+                          <ul className="sched-list">
+                            {schedule.slotWhenFree.map((b, i) => (
+                              <li key={i}>{b}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                            Nothing queued.
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <div className="sched-k">Fixed rocks</div>
+                        {schedule.fixedRocks.length ? (
+                          <ul className="sched-list">
+                            {schedule.fixedRocks.map((b, i) => (
+                              <li key={i}>{b}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                            None set.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <RowFoot sys={s} />
+                  </>
+                );
+              case "Exercise":
+                return renderRow(
+                  s.id,
+                  s.name,
+                  sessionDue,
+                  s.id,
+                  <>
+                    <ExerciseLogCard
+                      config={exerciseConfig}
+                      value={exerciseLog}
+                      onChange={(v) => mark(setExerciseLog)(v)}
+                    />
+                    <RowFoot sys={s} />
+                  </>
+                );
+              case "Diet":
+                return renderRow(
+                  s.id,
+                  s.name,
+                  `${dietLog.kcal} / ${targets.leanGain ?? "--"} kcal`,
+                  s.id,
+                  <>
+                    <DietLog
+                      catalog={catalog}
+                      value={dietLog}
+                      onChange={(v) => mark(setDietLog)(v)}
+                      targets={targets}
+                    />
+                    <RowFoot sys={s} />
+                  </>
+                );
+              case "Imagination":
+                return renderRow(
+                  s.id,
+                  s.name,
+                  mindLog.intention ? "intention set" : undefined,
+                  s.id,
+                  <>
+                    <div className="field">
+                      <label>Morning intention (one line)</label>
+                      <input
+                        value={mindLog.intention ?? ""}
+                        onChange={(e) =>
+                          mark(setMindLog)({ intention: e.target.value || null })
+                        }
+                        placeholder="Set the day's posture"
+                      />
+                    </div>
+                    <div className="field">
+                      <label>Evening reflection</label>
+                      <p className="journal-prompts muted">
+                        What happened today? What did you do about it?
+                      </p>
+                      <textarea
+                        rows={4}
+                        value={reflection}
+                        onChange={(e) => mark(setReflection)(e.target.value)}
+                        placeholder="Cap the day here."
+                      />
+                    </div>
+                    <RowFoot sys={s} label="Vision and reframes" />
+                  </>
+                );
+              default:
+                // A custom system: status buttons plus its own rule and floor.
+                return renderRow(
+                  s.id,
+                  s.name,
+                  undefined,
+                  s.id,
+                  <>
+                    {s.rule ? (
+                      <p style={{ margin: "0 0 8px", fontSize: 14 }}>{s.rule}</p>
+                    ) : null}
+                    <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                      Floor: {s.floor ?? "not set"}. Ceiling: {s.ceiling ?? "not set"}.
+                    </p>
+                    <RowFoot sys={s} />
+                  </>
+                );
+            }
+          })}
+        </div>
+      )}
 
       {/* Goals: compact quarter calendar on the page */}
       <GoalsCard

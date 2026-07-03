@@ -6,6 +6,9 @@ type ProfileLike = {
   height_cm: number | null;
   weight_kg: number | null;
   activity_level: string | null;
+  // Sex lives in coaching_prefs.intake.sex (set by onboarding). Profiles that
+  // predate the wizard have none and default to male (Mark's account).
+  coaching_prefs?: Record<string, unknown> | null;
 };
 
 const ACTIVITY: Record<string, { mult: number; label: string }> = {
@@ -60,8 +63,10 @@ export function computeTargets(p: ProfileLike | null): Targets {
   const cm = p.height_cm as number;
   const age = p.age as number;
 
-  // Mifflin-St Jeor, male. (A sex field gets added with the onboarding wizard.)
-  const bmr = 10 * kg + 6.25 * cm - 5 * age + 5;
+  // Mifflin-St Jeor, sex-adjusted (+5 male, -161 female).
+  const intake = (p.coaching_prefs?.intake ?? {}) as { sex?: unknown };
+  const female = intake.sex === "female";
+  const bmr = 10 * kg + 6.25 * cm - 5 * age + (female ? -161 : 5);
   const maintenance = roundTo(bmr * act.mult, 50);
   const leanGain = roundTo(maintenance + 250, 50);
   const protein = roundTo(kg * 1.9, 10);

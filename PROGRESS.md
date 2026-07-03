@@ -56,12 +56,22 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   supports (diet-linked goals show "not shared", never a made-up number).
   Per-goal visibility added: 0006 migration hardens goals_select_friend RLS to
   exclude the owner's hidden goals (coaching_prefs.sharing.hiddenGoals).
-- M8 Onboarding wizard: next. MUST also fix Today's single-user assumption:
-  TodayClient hardcodes 5 Big-Five rows by domain (lib domains Sleep/Diet/
-  Exercise/Flexible Schedule/Imagination), so a user with no matching systems
-  sees phantom rows without status buttons. M8 seeds each new user's own systems
-  from intake AND makes Today render the user's actual systems (rich cards for
-  Big-Five domains, generic rows for custom systems).
+- M8 Onboarding wizard: DONE (no migration needed).
+  - Today now renders the user's ACTUAL systems ordered by day flow (rich
+    bodies for Big-Five domains, generic rule/floor rows for custom systems);
+    zero systems -> empty-state card; brand-new accounts redirect to
+    /onboarding (guarded by coaching_prefs.onboarded).
+  - /onboarding: 6-step intake (basics+sex, sleep, schedule, diet, fitness,
+    mind/coaching) -> /api/onboarding/propose (Gemini returns JSON text-only
+    proposal: five systems' rule/floor/ceiling/anchor, 2-3 seed goals, a
+    profile brief; sanitized; hard fallback so AI failure never blocks) ->
+    editable review with code-computed targets -> completeOnboarding writes
+    stats, constraints, configs (sleep/exercise/schedule/mind/intake), inserts
+    the five systems + linked seed goals. Refuses to double-run.
+  - Coach knowledge is per-user now: loadKnowledge() is the shared base;
+    userProfileSection(prefs) uses coaching_prefs.profile_brief when present,
+    else falls back to your-profile.md (Mark). All 5 coach routes updated.
+  - computeTargets is sex-aware (coaching_prefs.intake.sex; default male).
 - M9 PWA + deploy to Vercel.
 - M10 Reminders engine (cron-job.org + Telegram + web push), fast-follow.
 
