@@ -22,6 +22,10 @@ import { readDietLog, emptyDietLog, type DietLogValue } from "@/lib/diet/log";
 import {
   readSleepLog,
   emptySleepLog,
+  computeSleepStats,
+  stepNumber,
+  targetBedtime,
+  HOLD_DAYS,
   type SleepConfig,
   type SleepLog,
 } from "@/lib/sleep/sleep";
@@ -248,6 +252,16 @@ export default function TodayClient({
 
   const gem = gemForDate(date);
 
+  // Sleep-shift campaign stats, computed in code from logged wake times.
+  const sleepStats = computeSleepStats(
+    sleepConfig,
+    recent.map((r) => ({
+      date: r.date,
+      wake: readSleepLog(r.module_logs?.sleep).wake,
+    }))
+  );
+  const sleepSystem = systems.find((s) => s.domain === "Sleep");
+
   // Today's one-line focus: the user's intention wins; otherwise a dynamic
   // line derived in code from the same signals as the briefing. Today only.
   const codeFocus = isToday
@@ -390,6 +404,52 @@ export default function TodayClient({
           &ldquo;{gem.text}&rdquo; <span className="muted">{gem.source}</span>
         </div>
       </div>
+
+      {/* Sleep-shift campaign strip: one slim row, today only, until at goal. */}
+      {isToday && !sleepStats.atGoal
+        ? (() => {
+            const stripStyle = {
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: "10px 16px",
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
+              fontSize: 13,
+            } as const;
+            const content = (
+              <>
+                <span style={{ fontWeight: 600 }}>Sleep campaign</span>
+                <span className="muted">·</span>
+                <span>Step {stepNumber(sleepConfig)}</span>
+                <span className="muted">·</span>
+                {sleepStats.eligible ? (
+                  <span style={{ color: "var(--accent)" }}>ready to advance</span>
+                ) : (
+                  <span>
+                    hold {sleepStats.holdStreak}/{HOLD_DAYS}
+                  </span>
+                )}
+                <span className="muted">·</span>
+                <span>wake {sleepConfig.currentWake}</span>
+                <span className="muted">·</span>
+                <span>bed {targetBedtime(sleepConfig)}</span>
+              </>
+            );
+            return sleepSystem ? (
+              <Link
+                href={`/systems/${sleepSystem.id}`}
+                style={{ ...stripStyle, color: "inherit", textDecoration: "none" }}
+              >
+                {content}
+              </Link>
+            ) : (
+              <div style={stripStyle}>{content}</div>
+            );
+          })()
+        : null}
 
       {/* Time-aware in-app reminders, computed in code from the clock. */}
       {isToday ? (

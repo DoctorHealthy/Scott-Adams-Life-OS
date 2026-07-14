@@ -160,6 +160,18 @@ export async function completeTelegramLink(code: string): Promise<ActionResult> 
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Not authenticated." };
 
+  // The cron is the acknowledged Telegram consumer and may have completed the
+  // link already; if the chat id is set, we are done.
+  const { data: existing } = await supabase
+    .from("user_channels")
+    .select("telegram_chat_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (existing?.telegram_chat_id) {
+    revalidatePath("/reminders");
+    return { ok: true };
+  }
+
   // The code must belong to this user and be fresh (cron expires them at 1h).
   const { data: row } = await supabase
     .from("telegram_link_codes")
@@ -186,7 +198,7 @@ export async function completeTelegramLink(code: string): Promise<ActionResult> 
   await supabase.from("telegram_link_codes").delete().eq("user_id", user.id);
   await sendTelegram(
     found.chatId,
-    "Linked. Your reminders land here now. The standard is the standard."
+    "Linked. Your reminders land here now. Reply UP when you wake and I log it."
   );
   revalidatePath("/reminders");
   return { ok: true };

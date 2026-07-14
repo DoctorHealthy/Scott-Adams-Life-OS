@@ -135,3 +135,11 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
 - R2 Sleep Campaign 2.0 next (two-way Telegram logging, escalating wind-down,
   auto-advance step, recovery protocol, campaign card). Then R3 flexible
   tracking (cadence/counters/sub-items), R4 commitments, R5 export.
+- R2 Sleep Campaign 2.0: DONE. Requires supabase/migrations/0008_telegram_state.sql
+  once. Cron is the single acknowledged Telegram consumer (telegram_state
+  cursor): /start codes complete links, replying UP logs the actual wake at the
+  message timestamp (sane-window guarded, never overwrites, drift feedback).
+  Lights-off hard stop at bed time (auto:bed), bad-night recovery protocol
+  (drift >60 min, auto:recovery), auto-advance when the hold is earned (config
+  updated then announced, auto:advance; all reminder times shift with it).
+  Campaign strip on Today (step, hold, tonight, links to Sleep playbook).

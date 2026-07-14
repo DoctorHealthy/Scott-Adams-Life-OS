@@ -1,23 +1,47 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { readSleepConfig, readSleepLog } from "@/lib/sleep/sleep";
-import { readDietConfig } from "@/lib/diet/config";
 import {
+  readSleepConfig,
+  readSleepLog,
+  computeSleepStats,
+  stepNumber,
+  targetBedtime,
+  hhmmToMin,
+  minToHHMM,
+} from "@/lib/sleep/sleep";
+import { readDietConfig } from "@/lib/diet/config";
+import { addDays } from "@/lib/constants";
+import {
+  advanceMessage,
   autoRemindersFor,
   customMessage,
   dueAutoReminders,
   isCustomDue,
   localNowIn,
+  recoveryMessage,
+  wakeLoggedMessage,
+  wakeRejectedMessage,
+  wakeReplyAccepted,
   DEFAULT_TIMEZONE,
   type CustomReminder,
 } from "@/lib/reminders/engine";
+import { fetchTelegramUpdates, sendTelegram } from "@/lib/reminders/channels";
 import { deliver, type DeliveryTargets } from "@/lib/reminders/deliver";
 
 export const maxDuration = 60;
 
-// Hit by cron-job.org every few minutes. Decides per user what is due (their
-// times, their timezone), sends it, and never double-sends: an INSERT into
-// reminder_sends with a unique (user, key, local-date) guards every send.
+type EntryRow = {
+  user_id: string;
+  date: string;
+  module_logs: { sleep?: unknown } | null;
+};
+
+// Hit by cron-job.org every minute or few. Single Telegram consumer: processes
+// the bot inbox (link codes, UP wake replies) with an acknowledged cursor,
+// then decides per user what is due (their times, their timezone), sends it,
+// and never double-sends (unique insert into reminder_sends gates every send).
+// The sleep campaign runs from here too: auto-advance and the recovery
+// protocol are code-decided events, deduped the same way.
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const secret = url.searchParams.get("secret") ?? request.headers.get("x-cron-secret");
@@ -26,8 +50,9 @@ export async function GET(request: Request) {
   }
 
   const admin = createAdminClient();
+  const now = new Date();
 
-  // Who can receive anything at all?
+  // ---- who can receive / reply ----
   const [{ data: channels }, { data: subs }] = await Promise.all([
     admin.from("user_channels").select("user_id, telegram_chat_id"),
     admin.from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth"),
@@ -37,89 +62,209 @@ export async function GET(request: Request) {
       .filter((c) => c.telegram_chat_id)
       .map((c) => [c.user_id as string, c.telegram_chat_id as string])
   );
+  const userByChat = new Map(
+    [...chatByUser.entries()].map(([uid, chat]) => [chat, uid])
+  );
   const subsByUser = new Map<string, { id: string; endpoint: string; p256dh: string; auth: string }[]>();
   for (const s of subs ?? []) {
     const list = subsByUser.get(s.user_id) ?? [];
     list.push(s);
     subsByUser.set(s.user_id, list);
   }
+
   const userIds = Array.from(new Set([...chatByUser.keys(), ...subsByUser.keys()]));
-  if (userIds.length === 0) {
-    return NextResponse.json({ checked: 0, sent: 0 });
+
+  const { data: users } = userIds.length
+    ? await admin.from("users").select("id, name, coaching_prefs").in("id", userIds)
+    : { data: [] as { id: string; name: string | null; coaching_prefs: Record<string, unknown> | null }[] };
+  const userById = new Map((users ?? []).map((u) => [u.id as string, u]));
+  const tzOf = (uid: string) => {
+    const prefs = (userById.get(uid)?.coaching_prefs ?? {}) as { timezone?: unknown };
+    return typeof prefs.timezone === "string" ? prefs.timezone : DEFAULT_TIMEZONE;
+  };
+
+  // ---- Telegram inbox: the single acknowledged consumer ----
+  let inboxHandled = 0;
+  const { data: tgState } = await admin
+    .from("telegram_state")
+    .select("last_update_id")
+    .eq("id", 1)
+    .maybeSingle();
+  const updates = await fetchTelegramUpdates(Number(tgState?.last_update_id ?? 0));
+  if (Array.isArray(updates) && updates.length > 0) {
+    let maxId = Number(tgState?.last_update_id ?? 0);
+    for (const u of updates) {
+      maxId = Math.max(maxId, u.update_id);
+      const text = (u.message?.text ?? "").trim();
+      const chatId = u.message?.chat?.id != null ? String(u.message.chat.id) : null;
+      if (!text || !chatId) continue;
+
+      // 1) Link codes: "/start CODE" (or the bare code).
+      const startMatch = text.match(/^\/start\s+(\S+)$/i);
+      const candidateCode = startMatch ? startMatch[1] : text;
+      if (startMatch || /^[A-Z0-9]{6}$/.test(candidateCode)) {
+        const { data: codeRow } = await admin
+          .from("telegram_link_codes")
+          .select("code, user_id")
+          .eq("code", candidateCode.toUpperCase())
+          .maybeSingle();
+        if (codeRow) {
+          await admin
+            .from("user_channels")
+            .upsert({ user_id: codeRow.user_id, telegram_chat_id: chatId });
+          await admin.from("telegram_link_codes").delete().eq("code", codeRow.code);
+          chatByUser.set(codeRow.user_id, chatId);
+          userByChat.set(chatId, codeRow.user_id);
+          await sendTelegram(
+            chatId,
+            "Linked. Your reminders land here now. Reply UP when you wake and I log it."
+          );
+          inboxHandled++;
+          continue;
+        }
+        if (startMatch) {
+          await sendTelegram(
+            chatId,
+            userByChat.has(chatId)
+              ? "Already linked. Reply UP when you wake and I log it."
+              : "Open Life OS, Reminders, Connect Telegram, then tap the link with your code."
+          );
+          inboxHandled++;
+          continue;
+        }
+      }
+
+      // 2) "UP": log the actual wake at the moment the message was sent.
+      if (/^up[.! ]*$/i.test(text)) {
+        const uid = userByChat.get(chatId);
+        if (!uid) continue;
+        const tz = tzOf(uid);
+        const sentAt = u.message?.date ? new Date(u.message.date * 1000) : now;
+        const local = localNowIn(tz, sentAt);
+        const cfg = readSleepConfig(userById.get(uid)?.coaching_prefs);
+        const targetMin = hhmmToMin(cfg.currentWake);
+
+        if (!wakeReplyAccepted(targetMin, local.minutes)) {
+          await sendTelegram(chatId, wakeRejectedMessage(cfg.currentWake));
+          inboxHandled++;
+          continue;
+        }
+
+        const wake = minToHHMM(local.minutes);
+        const { data: existing } = await admin
+          .from("entries")
+          .select("id, module_logs")
+          .eq("user_id", uid)
+          .eq("date", local.date)
+          .maybeSingle();
+        const ml = (existing?.module_logs ?? {}) as Record<string, unknown>;
+        const sleep = readSleepLog(ml.sleep);
+
+        if (sleep.wake) {
+          await sendTelegram(chatId, `Already logged: you woke at ${sleep.wake} today.`);
+          inboxHandled++;
+          continue;
+        }
+
+        const nextModuleLogs = { ...ml, sleep: { ...sleep, wake } };
+        if (existing) {
+          await admin
+            .from("entries")
+            .update({ module_logs: nextModuleLogs })
+            .eq("id", existing.id);
+        } else {
+          await admin.from("entries").insert({
+            user_id: uid,
+            date: local.date,
+            module_logs: nextModuleLogs,
+          });
+        }
+        await sendTelegram(chatId, wakeLoggedMessage(wake, local.minutes - targetMin));
+        inboxHandled++;
+        continue;
+      }
+
+      // 3) Anything else from a linked chat: one-line help.
+      if (userByChat.has(chatId)) {
+        await sendTelegram(chatId, "Reply UP when you wake and I log it. Everything else lives in the app.");
+        inboxHandled++;
+      }
+    }
+    await admin
+      .from("telegram_state")
+      .upsert({ id: 1, last_update_id: maxId, updated_at: new Date().toISOString() });
   }
 
-  const [{ data: users }, { data: reminders }, { data: systems }, { data: goals }] =
+  if (userIds.length === 0) {
+    return NextResponse.json({ checked: 0, sent: 0, inboxHandled });
+  }
+
+  // ---- load the evaluation data (after inbox writes, so wakes count) ----
+  const localByUser = new Map(userIds.map((uid) => [uid, localNowIn(tzOf(uid), now)]));
+  const dates = [...localByUser.values()].map((l) => l.date).sort();
+  const minDate = addDays(dates[0], -13); // sleep stats need a look-back window
+  const maxDate = dates[dates.length - 1];
+
+  const [{ data: reminders }, { data: systems }, { data: goals }, { data: entries }] =
     await Promise.all([
-      admin.from("users").select("id, name, coaching_prefs").in("id", userIds),
-      admin
-        .from("reminders")
-        .select("*")
-        .in("user_id", userIds)
-        .eq("enabled", true),
+      admin.from("reminders").select("*").in("user_id", userIds).eq("enabled", true),
       admin.from("systems").select("id, user_id, name").in("user_id", userIds),
       admin.from("goals").select("id, user_id, title").in("user_id", userIds),
+      admin
+        .from("entries")
+        .select("user_id, date, module_logs")
+        .in("user_id", userIds)
+        .gte("date", minDate)
+        .lte("date", maxDate)
+        .order("date", { ascending: false }),
     ]);
 
   const sysName = new Map((systems ?? []).map((s) => [s.id as string, s.name as string]));
   const goalName = new Map((goals ?? []).map((g) => [g.id as string, g.title as string]));
-
-  // Local now per user, then today's entries for the dates involved.
-  const now = new Date();
-  const localByUser = new Map(
-    (users ?? []).map((u) => {
-      const prefs = (u.coaching_prefs ?? {}) as { timezone?: unknown };
-      const tz = typeof prefs.timezone === "string" ? prefs.timezone : DEFAULT_TIMEZONE;
-      return [u.id as string, localNowIn(tz, now)];
-    })
-  );
-  const dates = Array.from(new Set([...localByUser.values()].map((l) => l.date)));
-  const { data: entries } = await admin
-    .from("entries")
-    .select("user_id, date, module_logs")
-    .in("user_id", userIds)
-    .in("date", dates);
-  const entryByUserDate = new Map(
-    (entries ?? []).map((e) => [`${e.user_id}:${e.date}`, e])
-  );
+  const entriesByUser = new Map<string, EntryRow[]>();
+  for (const e of (entries ?? []) as EntryRow[]) {
+    const list = entriesByUser.get(e.user_id) ?? [];
+    list.push(e);
+    entriesByUser.set(e.user_id, list);
+  }
 
   let sent = 0;
   let checked = 0;
   const goneSubIds: string[] = [];
   const disableOnce: string[] = [];
 
-  for (const u of users ?? []) {
-    const uid = u.id as string;
+  for (const uid of userIds) {
+    const u = userById.get(uid);
     const local = localByUser.get(uid);
-    if (!local) continue;
+    if (!u || !local) continue;
     const prefs = (u.coaching_prefs ?? {}) as Record<string, unknown>;
     const targets: DeliveryTargets = {
       telegramChatId: chatByUser.get(uid) ?? null,
       pushSubs: subsByUser.get(uid) ?? [],
     };
 
-    // What is due: automatic first.
+    const sleepConfig = readSleepConfig(prefs);
+    const own = entriesByUser.get(uid) ?? [];
+    const todayEntry = own.find((e) => e.date === local.date);
+    const todaySleep = readSleepLog(todayEntry?.module_logs?.sleep);
+
+    // ---- automatic time-based reminders ----
     const remCfg = (prefs.reminders ?? {}) as { autoDisabled?: unknown };
     const disabledKeys = Array.isArray(remCfg.autoDisabled)
       ? remCfg.autoDisabled.filter((x): x is string => typeof x === "string")
       : [];
-    const todayEntry = entryByUserDate.get(`${uid}:${local.date}`);
-    const sleepLog = readSleepLog(
-      (todayEntry?.module_logs as { sleep?: unknown } | null)?.sleep
-    );
     const autos = dueAutoReminders({
-      autos: autoRemindersFor(
-        readSleepConfig(prefs),
-        readDietConfig(prefs).window
-      ),
+      autos: autoRemindersFor(sleepConfig, readDietConfig(prefs).window),
       disabledKeys,
       state: {
-        morningLightDone: sleepLog.morningLight,
-        windDownDone: sleepLog.windDown,
+        morningLightDone: todaySleep.morningLight,
+        windDownDone: todaySleep.windDown,
       },
       now: local,
     });
 
-    const own: CustomReminder[] = ((reminders ?? []) as (CustomReminder & {
+    // ---- custom reminders ----
+    const ownReminders: CustomReminder[] = ((reminders ?? []) as (CustomReminder & {
       user_id: string;
       linked_system_id: string | null;
       linked_goal_id: string | null;
@@ -143,11 +288,15 @@ export async function GET(request: Request) {
             ? goalName.get(r.linked_goal_id) ?? null
             : null,
       }));
+    const dueCustoms = ownReminders.filter((r) => isCustomDue(r, local));
 
-    const dueCustoms = own.filter((r) => isCustomDue(r, local));
-    checked += autos.length + dueCustoms.length;
-
-    const work: { key: string; channel: "auto" | CustomReminder["channel"]; body: string; onceId?: string }[] = [
+    const work: {
+      key: string;
+      channel: "auto" | CustomReminder["channel"];
+      body: string;
+      onceId?: string;
+      advanceTo?: { wake: string; startedOn: string };
+    }[] = [
       ...autos.map((a) => ({ key: a.key as string, channel: "auto" as const, body: a.message })),
       ...dueCustoms.map((r) => ({
         key: `custom:${r.id}`,
@@ -157,14 +306,69 @@ export async function GET(request: Request) {
       })),
     ];
 
+    // ---- campaign events (code-decided, deduped like everything else) ----
+    const wakes = own.map((e) => ({
+      date: e.date,
+      wake: readSleepLog(e.module_logs?.sleep).wake,
+    }));
+    const stats = computeSleepStats(sleepConfig, wakes);
+
+    // Recovery protocol: today's wake landed 60+ minutes past target.
+    if (todaySleep.wake) {
+      const drift = hhmmToMin(todaySleep.wake) - hhmmToMin(sleepConfig.currentWake);
+      if (drift > 60) {
+        work.push({
+          key: "auto:recovery",
+          channel: "auto",
+          body: recoveryMessage(drift, sleepConfig.currentWake),
+        });
+      }
+    }
+
+    // Auto-advance: the hold is earned, so the target moves by itself.
+    if (stats.eligible) {
+      const newWake = stats.nextWake;
+      const newBed = targetBedtime({ ...sleepConfig, currentWake: newWake });
+      work.push({
+        key: "auto:advance",
+        channel: "auto",
+        body: advanceMessage(
+          stepNumber({ ...sleepConfig, currentWake: newWake }),
+          newWake,
+          newBed
+        ),
+        advanceTo: { wake: newWake, startedOn: local.date },
+      });
+    }
+
+    checked += work.length;
+
     for (const w of work) {
-      // The double-send guard: only the run that wins this insert sends.
+      // The double-send guard: only the run that wins this insert acts.
       const { error: dupe } = await admin.from("reminder_sends").insert({
         user_id: uid,
         key: w.key,
         sent_on: local.date,
       });
-      if (dupe) continue; // already sent today (or insert failed): skip
+      if (dupe) continue;
+
+      // Apply the config change BEFORE announcing it, and only once (the
+      // send-log insert above is the lock).
+      if (w.advanceTo) {
+        const nextPrefs = {
+          ...prefs,
+          sleep: {
+            ...sleepConfig,
+            currentWake: w.advanceTo.wake,
+            stepStartedOn: w.advanceTo.startedOn,
+          },
+        };
+        const { error: advErr } = await admin
+          .from("users")
+          .update({ coaching_prefs: nextPrefs })
+          .eq("id", uid);
+        if (advErr) continue; // config failed: skip the announcement
+      }
 
       const res = await deliver({
         targets,
@@ -178,8 +382,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Housekeeping: prune dead push endpoints, retire fired one-time reminders,
-  // and expire stale Telegram link codes.
+  // Housekeeping.
   if (goneSubIds.length > 0) {
     await admin.from("push_subscriptions").delete().in("id", goneSubIds);
   }
@@ -191,5 +394,5 @@ export async function GET(request: Request) {
     .delete()
     .lt("created_at", new Date(Date.now() - 3600_000).toISOString());
 
-  return NextResponse.json({ checked, sent });
+  return NextResponse.json({ checked, sent, inboxHandled });
 }

@@ -40,6 +40,37 @@ export async function telegramBotUsername(): Promise<string | null> {
   }
 }
 
+export type TelegramUpdate = {
+  update_id: number;
+  message?: {
+    text?: string;
+    date?: number; // unix seconds, when the user sent it
+    chat?: { id?: number };
+  };
+};
+
+// Fetch updates AFTER the given cursor. The reminder cron is the single
+// consumer: passing offset acknowledges everything before it, so each message
+// is handled exactly once. (The link-completion action only PEEKS, without an
+// offset, and never acknowledges.)
+export async function fetchTelegramUpdates(
+  afterUpdateId: number
+): Promise<TelegramUpdate[] | { error: string }> {
+  try {
+    const res = await fetch(
+      `${TG_API}/bot${botToken()}/getUpdates?timeout=0&offset=${afterUpdateId + 1}&allowed_updates=%5B%22message%22%5D`
+    );
+    if (res.status === 409) {
+      return { error: "A webhook is set on this bot; remove it (getUpdates mode required)." };
+    }
+    const json = (await res.json()) as { ok?: boolean; result?: TelegramUpdate[] };
+    if (!json.ok || !Array.isArray(json.result)) return [];
+    return json.result;
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
 // Scan pending bot updates for "/start <code>" messages. Used by the on-demand
 // link completion (no webhook to configure; works locally and deployed).
 export async function findTelegramStart(
