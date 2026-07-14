@@ -12,7 +12,7 @@ export const DOMAINS = [
 
 export const METRIC_TYPES: { value: MetricType; label: string }[] = [
   { value: "binary", label: "Done / skipped" },
-  { value: "number", label: "A number (reps, minutes, etc.)" },
+  { value: "number", label: "A counter (+1 on Today)" },
   { value: "scale_1_10", label: "A 1 to 10 rating" },
 ];
 

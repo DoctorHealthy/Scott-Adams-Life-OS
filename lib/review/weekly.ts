@@ -18,6 +18,7 @@ import {
   type Goal,
   type ProgressInputs,
 } from "@/lib/goals/goals";
+import { isWeeklyTracked, weeklyCount } from "@/lib/tracking/tracking";
 
 export type WeekEntry = {
   date: string;
@@ -36,6 +37,8 @@ export type SystemWeek = {
   skip: number;
   notLogged: number;
   label: "autopilot" | "willpower" | "attention";
+  // Weekly-tracked systems (weekly cadence or counters): judged on the week.
+  weekly?: { count: number; target: number | null; unit: string | null };
 };
 
 export type Correlation = {
@@ -195,6 +198,28 @@ export function computeWeeklyStats(args: {
       else if (st === "skip") skip++;
       else notLogged++;
     }
+
+    // Weekly-tracked systems are judged on the week's count, not daily runs.
+    if (isWeeklyTracked(s)) {
+      const count = weeklyCount(s, windowEntries, end);
+      const target = s.target_per_week;
+      let label: SystemWeek["label"];
+      if (target != null && count >= target) label = "autopilot";
+      else if (count === 0) label = "attention";
+      else label = "willpower";
+      return {
+        id: s.id,
+        name: s.name,
+        domain: s.domain,
+        done,
+        floor,
+        skip,
+        notLogged,
+        label,
+        weekly: { count, target, unit: s.unit },
+      };
+    }
+
     const ran = done + floor;
     let label: SystemWeek["label"];
     if (skip >= 3 || ran <= 2) label = "attention";

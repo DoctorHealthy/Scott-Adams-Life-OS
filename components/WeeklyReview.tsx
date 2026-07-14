@@ -44,7 +44,11 @@ function StatsView({ stats }: { stats: WeeklyStats }) {
               <div className="review-sys-info">
                 <span className="review-sys-name">{s.name}</span>
                 <span className="review-sys-counts muted">
-                  {s.done} done, {s.floor} min, {s.skip} skip
+                  {s.weekly
+                    ? `${s.weekly.count}/${s.weekly.target ?? "?"}${
+                        s.weekly.unit ? ` ${s.weekly.unit}` : ""
+                      } this week`
+                    : `${s.done} done, ${s.floor} min, ${s.skip} skip`}
                 </span>
               </div>
               <span className={`review-badge badge-${s.label}`}>

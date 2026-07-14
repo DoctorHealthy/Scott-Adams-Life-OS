@@ -51,7 +51,7 @@ export default async function PartnerPage() {
       supabase.from("users").select("*").eq("id", user.id).single(),
       supabase
         .from("systems")
-        .select("id, name, domain, sort_order")
+        .select("id, name, domain, sort_order, cadence, metric_type, target_per_week")
         .eq("user_id", user.id)
         .eq("active", true)
         .order("sort_order", { ascending: true }),
@@ -70,7 +70,10 @@ export default async function PartnerPage() {
         .order("created_at", { ascending: true }),
     ]);
 
-  const mySys = ((mySystems ?? []) as Pick<System, "id" | "name" | "domain" | "sort_order">[]);
+  const mySys = ((mySystems ?? []) as Pick<
+    System,
+    "id" | "name" | "domain" | "sort_order" | "cadence" | "metric_type" | "target_per_week"
+  >[]);
   const myFull = (myEntries ?? []) as {
     date: string;
     energy_1_10: number | null;
@@ -88,6 +91,7 @@ export default async function PartnerPage() {
     sleepConfig: readSleepConfig(profile?.coaching_prefs),
     exerciseConfig: readExerciseConfig(profile?.coaching_prefs),
     proteinTarget: myTargets.protein,
+    systems: mySys,
     recent: myFull,
   });
 
@@ -117,7 +121,7 @@ export default async function PartnerPage() {
       supabase.from("users").select("*").eq("id", friendId).single(),
       supabase
         .from("systems")
-        .select("id, name, domain, sort_order")
+        .select("id, name, domain, sort_order, cadence, metric_type, target_per_week")
         .eq("user_id", friendId)
         .eq("active", true)
         .order("sort_order", { ascending: true }),
@@ -136,7 +140,10 @@ export default async function PartnerPage() {
 
     const hidden = new Set(readHiddenSystems(fProfile?.coaching_prefs));
     const fSys = (
-      (fSystems ?? []) as Pick<System, "id" | "name" | "domain" | "sort_order">[]
+      (fSystems ?? []) as Pick<
+        System,
+        "id" | "name" | "domain" | "sort_order" | "cadence" | "metric_type" | "target_per_week"
+      >[]
     ).filter((s) => !hidden.has(s.id));
     const fGoals = ((fGoalRows as GoalRow[]) ?? []).map((r) =>
       goalFromRow(r, fSys as System[])

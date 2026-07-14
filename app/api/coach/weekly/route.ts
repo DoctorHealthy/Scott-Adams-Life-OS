@@ -82,6 +82,7 @@ export async function POST(request: Request) {
     sleepConfig,
     exerciseConfig,
     proteinTarget: targets.protein,
+    systems: sys,
     recent: rows,
   });
 

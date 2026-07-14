@@ -7,11 +7,13 @@ import type { DietLogValue } from "@/lib/diet/log";
 import type { SleepLog } from "@/lib/sleep/sleep";
 import type { ExerciseLog } from "@/lib/exercise/exercise";
 import type { MindLog } from "@/lib/mind/config";
+import type { CounterMap } from "@/lib/tracking/tracking";
 
 export type ModuleLogs = {
   sleep: SleepLog;
   exercise: ExerciseLog;
   mind: MindLog;
+  counters: CounterMap; // counted systems: system id -> today's count
 };
 
 export type EntryInput = {

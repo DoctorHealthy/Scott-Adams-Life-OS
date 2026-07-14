@@ -9,6 +9,7 @@ import {
   type ExerciseConfig,
 } from "@/lib/exercise/exercise";
 import { readDietLog } from "@/lib/diet/log";
+import { weeklyCountsFor, type SystemTrackingLike } from "@/lib/tracking/tracking";
 
 export type Quarter = 1 | 2 | 3 | 4;
 
@@ -19,7 +20,8 @@ export type GoalLink =
   | "manual"
   | "sleep_wake"
   | "training_sessions"
-  | "diet_protein";
+  | "diet_protein"
+  | "weekly_system"; // any weekly-tracked system: weekly count vs target
 
 export type Milestone = { id: string; text: string; done: boolean };
 
@@ -54,7 +56,15 @@ export type GoalRow = {
   status: "active" | "done" | "dropped";
 };
 
-type SystemLike = { id: string; name: string; domain: string | null };
+type SystemLike = {
+  id: string;
+  name: string;
+  domain: string | null;
+  // Present on real System rows; optional so older call sites still work.
+  cadence?: "daily" | "weekly";
+  metric_type?: string;
+  target_per_week?: number | null;
+};
 
 export function linkKindForDomain(domain: string | null | undefined): GoalLink {
   switch (domain) {
@@ -67,6 +77,16 @@ export function linkKindForDomain(domain: string | null | undefined): GoalLink {
     default:
       return "manual";
   }
+}
+
+// The link kind for a specific system: the Big-Five derivations first, then
+// any weekly-tracked system (weekly cadence or a counter) drives progress
+// from its weekly count vs target.
+export function linkKindForSystem(s: SystemLike): GoalLink {
+  const byDomain = linkKindForDomain(s.domain);
+  if (byDomain !== "manual") return byDomain;
+  if (s.cadence === "weekly" || s.metric_type === "number") return "weekly_system";
+  return "manual";
 }
 
 function readMilestones(raw: unknown): Milestone[] {
@@ -87,7 +107,7 @@ export function goalFromRow(row: GoalRow, systems: SystemLike[]): Goal {
     quarter: (Math.min(4, Math.max(1, row.target_quarter)) || 1) as Quarter,
     year: row.target_year,
     linkedSystemId: linked?.id ?? null,
-    link: linked ? linkKindForDomain(linked.domain) : "manual",
+    link: linked ? linkKindForSystem(linked) : "manual",
     manualProgress: row.manual_progress ?? 0,
     notes: row.notes ?? "",
     milestones: readMilestones(row.milestones),
@@ -124,14 +144,16 @@ export function linkChoices(systems: SystemLike[]): LinkChoice[] {
     { value: "", label: "Manual / milestones", kind: "manual" },
   ];
   for (const s of systems) {
-    const kind = linkKindForDomain(s.domain);
+    const kind = linkKindForSystem(s);
     if (kind === "manual") continue;
     const what =
       kind === "sleep_wake"
         ? "sleep-shift step"
         : kind === "training_sessions"
           ? "sessions per week"
-          : "protein adherence";
+          : kind === "diet_protein"
+            ? "protein adherence"
+            : "weekly target";
     out.push({ value: s.id, label: `Linked: ${s.name} (${what})`, kind });
   }
   return out;
@@ -160,6 +182,8 @@ export type ProgressInputs = {
   sessionsTarget: number;
   proteinDaysHit: number;
   proteinDaysLogged: number;
+  // Weekly-tracked systems (weekly cadence or counters): id -> this week.
+  weeklyBySystem: Record<string, { count: number; target: number | null }>;
 };
 
 // One shared computation for every surface that shows goal progress
@@ -169,9 +193,15 @@ export function computeGoalProgressInputs(args: {
   sleepConfig: SleepConfig;
   exerciseConfig: ExerciseConfig;
   proteinTarget: number | null;
-  recent: { date: string; meals: unknown; module_logs: { exercise?: unknown } | null }[];
+  systems?: SystemTrackingLike[];
+  recent: {
+    date: string;
+    meals: unknown;
+    system_statuses?: Record<string, string> | null;
+    module_logs: { exercise?: unknown } | null;
+  }[];
 }): ProgressInputs {
-  const { date, sleepConfig, exerciseConfig, proteinTarget, recent } = args;
+  const { date, sleepConfig, exerciseConfig, proteinTarget, systems, recent } = args;
   const exStats = computeExerciseStats(
     exerciseConfig,
     recent.map((r) => ({ date: r.date, log: readExerciseLog(r.module_logs?.exercise) })),
@@ -183,12 +213,29 @@ export function computeGoalProgressInputs(args: {
     proteinTarget == null
       ? 0
       : last7.filter((r) => readDietLog(r.meals).protein >= proteinTarget * 0.9).length;
+
+  const weeklyBySystem = systems
+    ? weeklyCountsFor(
+        systems,
+        recent.map((r) => ({
+          date: r.date,
+          system_statuses: (r.system_statuses ?? null) as Record<
+            string,
+            "done" | "floor" | "skip"
+          > | null,
+          module_logs: r.module_logs,
+        })),
+        date
+      )
+    : {};
+
   return {
     sleepConfig,
     sessionsLast7: exStats.sessionsLast7,
     sessionsTarget: exStats.sessionsTarget,
     proteinDaysHit,
     proteinDaysLogged,
+    weeklyBySystem,
   };
 }
 
@@ -209,6 +256,13 @@ export function goalProgress(goal: Goal, inp: ProgressInputs): number {
     case "diet_protein": {
       if (inp.proteinDaysLogged <= 0) return 0;
       return clampPct((inp.proteinDaysHit / inp.proteinDaysLogged) * 100);
+    }
+    case "weekly_system": {
+      const w = goal.linkedSystemId
+        ? inp.weeklyBySystem[goal.linkedSystemId]
+        : undefined;
+      if (!w || !w.target || w.target <= 0) return 0;
+      return clampPct((w.count / w.target) * 100);
     }
     case "manual":
     default: {

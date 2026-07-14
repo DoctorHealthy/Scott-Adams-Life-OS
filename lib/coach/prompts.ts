@@ -129,6 +129,7 @@ export function buildDailyReviewPrompt(args: {
   correlations: CorrelationLike[];
   vision: string;
   goals: GoalLine[];
+  weeklyCounts: Record<string, { count: number; target: number | null }>;
 }): string {
   const {
     profile,
@@ -144,12 +145,18 @@ export function buildDailyReviewPrompt(args: {
     correlations,
     vision,
     goals,
+    weeklyCounts,
   } = args;
 
   // ---- numbers computed in code; the model only reads them ----
   const statuses = entry.system_statuses ?? {};
   const counts = { done: 0, floor: 0, skip: 0, not_logged: 0 };
   const systemLines = systems.map((s) => {
+    // Weekly-tracked systems report the week, not a daily status.
+    const w = weeklyCounts[s.id];
+    if (w) {
+      return `- ${s.name} [weekly]: ${w.count} of ${w.target ?? "no target"} this week (judge the week, not the day)`;
+    }
     const st = statuses[s.id] as SystemStatus | undefined;
     if (st) counts[st] += 1;
     else counts.not_logged += 1;
@@ -436,6 +443,7 @@ type SystemWeekLike = {
   skip: number;
   notLogged: number;
   label: "autopilot" | "willpower" | "attention";
+  weekly?: { count: number; target: number | null; unit: string | null };
 };
 
 type CorrelationLike = {
@@ -499,9 +507,12 @@ export function buildWeeklyReviewPrompt(args: {
     : "Profile not set.";
 
   const systemLines = s.systems
-    .map(
-      (x) =>
-        `- ${x.name}: ${x.done} done, ${x.floor} min, ${x.skip} skip, ${x.notLogged} not logged  [${x.label}]`
+    .map((x) =>
+      x.weekly
+        ? `- ${x.name} [weekly]: ${x.weekly.count} of ${x.weekly.target ?? "no target"}${
+            x.weekly.unit ? ` ${x.weekly.unit}` : ""
+          } this week  [${x.label}]`
+        : `- ${x.name}: ${x.done} done, ${x.floor} min, ${x.skip} skip, ${x.notLogged} not logged  [${x.label}]`
     )
     .join("\n");
 

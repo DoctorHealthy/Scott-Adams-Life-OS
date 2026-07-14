@@ -14,6 +14,11 @@ export interface System {
   schedule_block: string | null;
   active: boolean;
   sort_order: number;
+  // Flexible tracking (R3): weekly systems are judged over the week, and
+  // counted systems (metric_type 'number') bump a +1 counter on Today.
+  cadence: "daily" | "weekly";
+  target_per_week: number | null;
+  unit: string | null;
   created_at: string;
   updated_at: string;
 }

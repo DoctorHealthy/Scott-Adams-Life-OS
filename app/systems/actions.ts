@@ -14,6 +14,9 @@ export type SystemInput = {
   anchor: string;
   schedule_block: string;
   active: boolean;
+  cadence: "daily" | "weekly";
+  target_per_week: number | null;
+  unit: string | null;
 };
 
 type ActionResult = { ok: true } | { error: string };
@@ -21,6 +24,19 @@ type ActionResult = { ok: true } | { error: string };
 function emptyToNull(s: string): string | null {
   const t = (s ?? "").trim();
   return t.length ? t : null;
+}
+
+// Anything that is not an explicit 'weekly' collapses to 'daily'.
+function sanitizeCadence(c: unknown): "daily" | "weekly" {
+  return c === "weekly" ? "weekly" : "daily";
+}
+
+// null, or a whole number clamped to 1..21.
+function sanitizeTargetPerWeek(n: unknown): number | null {
+  if (n === null || n === undefined || n === "") return null;
+  const v = Math.round(Number(n));
+  if (!Number.isFinite(v)) return null;
+  return Math.min(21, Math.max(1, v));
 }
 
 async function requireUser() {
@@ -54,6 +70,9 @@ export async function createSystem(input: SystemInput): Promise<ActionResult> {
     anchor: emptyToNull(input.anchor),
     schedule_block: emptyToNull(input.schedule_block),
     active: input.active,
+    cadence: sanitizeCadence(input.cadence),
+    target_per_week: sanitizeTargetPerWeek(input.target_per_week),
+    unit: emptyToNull(input.unit ?? ""),
     sort_order: count ?? 0,
   });
 
@@ -84,6 +103,9 @@ export async function updateSystem(
       anchor: emptyToNull(input.anchor),
       schedule_block: emptyToNull(input.schedule_block),
       active: input.active,
+      cadence: sanitizeCadence(input.cadence),
+      target_per_week: sanitizeTargetPerWeek(input.target_per_week),
+      unit: emptyToNull(input.unit ?? ""),
     })
     .eq("id", id)
     .eq("user_id", user.id);

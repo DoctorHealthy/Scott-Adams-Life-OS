@@ -15,6 +15,7 @@ import {
 } from "@/lib/sleep/sleep";
 import type { EffectiveTargets } from "@/lib/diet/config";
 import type { Goal } from "@/lib/goals/goals";
+import { isWeeklyTracked, weeklyCount } from "@/lib/tracking/tracking";
 
 export type Point = { date: string; value: number | null };
 
@@ -73,7 +74,10 @@ function buildRecords(
   systems: System[]
 ): DailyRecord[] {
   const byDate = new Map(entries.map((e) => [e.date, e]));
-  const activeCount = systems.length;
+  // Daily adherence only judges daily systems; weekly-tracked ones have their
+  // own per-week series below.
+  const dailySystems = systems.filter((s) => !isWeeklyTracked(s));
+  const activeCount = dailySystems.length;
 
   return dateList.map((date) => {
     const e = byDate.get(date);
@@ -89,7 +93,7 @@ function buildRecords(
     const statuses = e?.system_statuses ?? {};
     if (e && activeCount > 0 && Object.keys(statuses).length > 0) {
       let ran = 0;
-      for (const s of systems) {
+      for (const s of dailySystems) {
         const st = statuses[s.id];
         if (st === "done" || st === "floor") ran++;
       }
@@ -249,8 +253,30 @@ export function buildAllSeries(args: {
     summary: "Log it in the Diet row when you weigh in.",
   });
 
-  // ----- Systems (7-day rolling adherence per system) -----
+  // ----- Systems -----
   for (const s of systems) {
+    if (isWeeklyTracked(s)) {
+      // Rolling last-7 count vs the weekly target.
+      const points: Point[] = dateList.map((d) => ({
+        date: d,
+        value: weeklyCount(s, entries, d),
+      }));
+      out.push({
+        key: `system:${s.id}`,
+        label: `${s.name} per week`,
+        group: "Systems",
+        points,
+        unit: s.unit ?? "/ week",
+        target: s.target_per_week,
+        targetLabel:
+          s.target_per_week != null ? `target ${s.target_per_week}` : undefined,
+        yMinHint: 0,
+        summary: "Rolling 7-day total.",
+      });
+      continue;
+    }
+
+    // Daily systems: 7-day rolling adherence.
     const points: Point[] = records.map((_, i) => {
       let num = 0;
       let den = 0;

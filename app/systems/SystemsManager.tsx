@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DOMAINS, METRIC_TYPES } from "@/lib/constants";
-import { DOMAIN_EXAMPLES } from "@/lib/systems/examples";
+import { DOMAIN_EXAMPLES, SYSTEM_TEMPLATES } from "@/lib/systems/examples";
 import type { MetricType, System } from "@/lib/types";
 import {
   createSystem,
@@ -25,6 +25,9 @@ const EMPTY: SystemInput = {
   anchor: "",
   schedule_block: "",
   active: true,
+  cadence: "daily",
+  target_per_week: null,
+  unit: null,
 };
 
 function metricLabel(m: MetricType) {
@@ -40,6 +43,7 @@ export default function SystemsManager({
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SystemInput>(EMPTY);
+  const [templateKey, setTemplateKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -69,6 +73,7 @@ export default function SystemsManager({
   function openCreate() {
     setEditingId(null);
     setForm(EMPTY);
+    setTemplateKey("");
     setError(null);
     setOpen(true);
   }
@@ -85,9 +90,36 @@ export default function SystemsManager({
       anchor: s.anchor ?? "",
       schedule_block: s.schedule_block ?? "",
       active: s.active,
+      cadence: s.cadence ?? "daily",
+      target_per_week: s.target_per_week ?? null,
+      unit: s.unit ?? null,
     });
+    setTemplateKey("");
     setError(null);
     setOpen(true);
+  }
+
+  // Fill the whole create form from a template. Real values, editable before save.
+  function applyTemplate(key: string) {
+    setTemplateKey(key);
+    const t = SYSTEM_TEMPLATES.find((x) => x.key === key);
+    if (!t) {
+      setForm(EMPTY);
+      return;
+    }
+    setForm({
+      ...EMPTY,
+      name: t.values.name,
+      domain: t.values.domain,
+      rule: t.values.rule,
+      floor: t.values.floor,
+      ceiling: t.values.ceiling,
+      metric_type: t.values.metric_type,
+      anchor: t.values.anchor,
+      cadence: t.values.cadence,
+      target_per_week: t.values.target_per_week,
+      unit: t.values.unit,
+    });
   }
 
   async function save() {
@@ -282,6 +314,27 @@ export default function SystemsManager({
 
             {error ? <div className="alert alert-error">{error}</div> : null}
 
+            {!editingId ? (
+              <div className="field">
+                <label>Start from a template</label>
+                <select
+                  value={templateKey}
+                  onChange={(e) => applyTemplate(e.target.value)}
+                >
+                  <option value="">Blank (build your own)</option>
+                  {SYSTEM_TEMPLATES.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="muted" style={{ fontSize: 12 }}>
+                  Fills the form with a ready-made system you can edit before
+                  saving.
+                </span>
+              </div>
+            ) : null}
+
             <p className="muted" style={{ marginTop: 0, fontSize: 12 }}>
               These fields are your contract. You see them on Today; the coach
               reads them in every review.
@@ -327,6 +380,65 @@ export default function SystemsManager({
                 </select>
               </div>
             </div>
+
+            <div className="form-row">
+              <div className="field">
+                <label>Cadence</label>
+                <select
+                  value={form.cadence}
+                  onChange={(e) => {
+                    const cadence = e.target.value === "weekly" ? "weekly" : "daily";
+                    setForm({
+                      ...form,
+                      cadence,
+                      target_per_week:
+                        cadence === "weekly" ? form.target_per_week ?? 3 : null,
+                    });
+                  }}
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+              {form.cadence === "weekly" ? (
+                <div className="field">
+                  <label>Times per week</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={21}
+                    value={form.target_per_week ?? 3}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        target_per_week:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    Judged over the week, not the day. No daily nagging.
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            {form.metric_type === "number" ? (
+              <div className="field">
+                <label>Unit</label>
+                <input
+                  value={form.unit ?? ""}
+                  onChange={(e) =>
+                    setForm({ ...form, unit: e.target.value || null })
+                  }
+                  placeholder="e.g. touches, pages, calls"
+                />
+                <span className="muted" style={{ fontSize: 12 }}>
+                  You bump this counter on Today; the weekly total is judged
+                  against your target.
+                </span>
+              </div>
+            ) : null}
 
             <div className="field">
               <label>Rule (the behavior you repeat)</label>

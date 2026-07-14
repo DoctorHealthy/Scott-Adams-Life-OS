@@ -143,3 +143,12 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   (drift >60 min, auto:recovery), auto-advance when the hold is earned (config
   updated then announced, auto:advance; all reminder times shift with it).
   Campaign strip on Today (step, hold, tonight, links to Sleep playbook).
+- R3 Flexible tracking: DONE. Requires supabase/migrations/0009_cadence.sql
+  once. Systems gain cadence (daily/weekly), target_per_week, unit; metric_type
+  number = a +1 counter on Today (module_logs.counters). Weekly-tracked systems
+  are judged over a rolling 7 days everywhere: Today glance/body, daily coach
+  DATA ("judge the week"), no daily skip-misses, weekly review count/target with
+  autopilot labels from the weekly target, per-system trends chart weekly totals
+  vs target, and goals can link to any weekly-tracked system (weekly_system).
+  System editor: cadence/target/unit fields + Start-from-template (Networking,
+  Reading, Language practice, Skill practice).

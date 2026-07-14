@@ -50,6 +50,12 @@ import {
   linkChoices,
   type Goal,
 } from "@/lib/goals/goals";
+import {
+  isCounter,
+  isWeeklyTracked,
+  readCounters,
+  type CounterMap,
+} from "@/lib/tracking/tracking";
 
 const STATUSES: SystemStatus[] = ["done", "floor", "skip"];
 
@@ -99,6 +105,7 @@ export default function TodayClient({
   const [sleepLog, setSleepLog] = useState<SleepLog>(emptySleepLog());
   const [exerciseLog, setExerciseLog] = useState<ExerciseLog>(emptyExerciseLog());
   const [mindLog, setMindLog] = useState<MindLog>(emptyMindLog());
+  const [counters, setCounters] = useState<CounterMap>({});
   const [reflection, setReflection] = useState("");
   const [isPrivate, setIsPrivate] = useState(true);
 
@@ -161,6 +168,7 @@ export default function TodayClient({
       setSleepLog(readSleepLog(ml.sleep));
       setExerciseLog(readExerciseLog(ml.exercise));
       setMindLog(readMindLog(ml.mind));
+      setCounters(readCounters(data?.module_logs));
       setReflection(data?.reflection ?? "");
       setIsPrivate(data?.is_private ?? true);
       setEntryExists(!!data);
@@ -207,7 +215,12 @@ export default function TodayClient({
       energy_1_10: energy,
       system_statuses: statuses,
       meals: dietLog,
-      module_logs: { sleep: sleepLog, exercise: exerciseLog, mind: mindLog },
+      module_logs: {
+        sleep: sleepLog,
+        exercise: exerciseLog,
+        mind: mindLog,
+        counters,
+      },
       one_line: "",
       reflection,
       tomorrow_next_action: "",
@@ -285,6 +298,7 @@ export default function TodayClient({
     sleepConfig,
     exerciseConfig,
     proteinTarget: targets.protein,
+    systems,
     recent,
   });
   const progressFor = (g: Goal) => goalProgress(g, progressInputs);
@@ -293,6 +307,27 @@ export default function TodayClient({
     const res = await saveGoalsForYear(currentYear(date ?? today), next);
     router.refresh();
     return res;
+  }
+
+  // ---- weekly-tracked systems: counts with today's unsaved bumps applied ----
+  const savedTodayCounters = readCounters(
+    recent.find((r) => r.date === date)?.module_logs
+  );
+  const weekFor = (sysId: string) => {
+    const base = progressInputs.weeklyBySystem[sysId];
+    if (!base) return null;
+    const adj = (counters[sysId] ?? 0) - (savedTodayCounters[sysId] ?? 0);
+    return { count: base.count + adj, target: base.target };
+  };
+
+  function bumpCounter(id: string, delta: number) {
+    setCounters((prev) => {
+      const next = { ...prev, [id]: Math.max(0, (prev[id] ?? 0) + delta) };
+      if (next[id] === 0) delete next[id];
+      return next;
+    });
+    setDirty(true);
+    setSaved(false);
   }
 
   // Plain helpers that RETURN JSX (not components used as <Row/>), so the
@@ -315,12 +350,44 @@ export default function TodayClient({
       </div>
     ) : null;
 
+  // A compact minus / count / plus control for counted systems.
+  const counterControl = (sysId: string) => (
+    <div className="status-group">
+      <button
+        className="status-btn"
+        onClick={() => bumpCounter(sysId, -1)}
+        disabled={!counters[sysId]}
+        aria-label="Minus one"
+      >
+        &minus;
+      </button>
+      <span
+        style={{
+          minWidth: 26,
+          textAlign: "center",
+          fontVariantNumeric: "tabular-nums",
+          fontSize: 14,
+        }}
+      >
+        {counters[sysId] ?? 0}
+      </span>
+      <button
+        className="status-btn"
+        onClick={() => bumpCounter(sysId, 1)}
+        aria-label="Plus one"
+      >
+        +
+      </button>
+    </div>
+  );
+
   const renderRow = (
     rowKey: string,
     title: string,
     glance: string | undefined,
     sysId: string | undefined,
-    body: ReactNode
+    body: ReactNode,
+    control?: ReactNode
   ) => {
     const open = !!openRows[rowKey];
     return (
@@ -331,7 +398,7 @@ export default function TodayClient({
             <span className="sysrow-name">{title}</span>
             {glance ? <span className="sysrow-glance">{glance}</span> : null}
           </button>
-          {statusButtons(sysId)}
+          {control ?? statusButtons(sysId)}
         </div>
         {open ? <div className="sysrow-body">{body}</div> : null}
       </div>
@@ -583,23 +650,40 @@ export default function TodayClient({
                     <RowFoot sys={s} label="Vision and reframes" />
                   </>
                 );
-              default:
-                // A custom system: status buttons plus its own rule and floor.
+              default: {
+                // A custom system. Weekly-tracked ones show their week in the
+                // glance; counted ones get a minus/plus control instead of the
+                // status buttons.
+                const week = isWeeklyTracked(s) ? weekFor(s.id) : null;
+                const glance = week
+                  ? `${week.count}/${week.target ?? "?"}${
+                      s.unit ? ` ${s.unit}` : ""
+                    } this week`
+                  : undefined;
                 return renderRow(
                   s.id,
                   s.name,
-                  undefined,
+                  glance,
                   s.id,
                   <>
                     {s.rule ? (
                       <p style={{ margin: "0 0 8px", fontSize: 14 }}>{s.rule}</p>
                     ) : null}
+                    {week ? (
+                      <p className="muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
+                        This week: {week.count} of {week.target ?? "no target"}
+                        {s.unit ? ` ${s.unit}` : ""}. Judged over the week, not
+                        the day.
+                      </p>
+                    ) : null}
                     <p className="muted" style={{ margin: 0, fontSize: 13 }}>
                       Min: {s.floor ?? "not set"}. Ceiling: {s.ceiling ?? "not set"}.
                     </p>
                     <RowFoot sys={s} />
-                  </>
+                  </>,
+                  isCounter(s) ? counterControl(s.id) : undefined
                 );
+              }
             }
           })}
         </div>

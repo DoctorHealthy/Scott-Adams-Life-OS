@@ -110,6 +110,7 @@ export function buildWeekPerson(args: {
         sessionsTarget: 0,
         proteinDaysHit: 0,
         proteinDaysLogged: 0,
+        weeklyBySystem: {},
       };
       return { id: g.id, title: g.title, progress: goalProgress(g, inputs) };
     }
@@ -120,6 +121,7 @@ export function buildWeekPerson(args: {
         sessionsTarget: 0,
         proteinDaysHit: 0,
         proteinDaysLogged: 0,
+        weeklyBySystem: {},
       };
       return { id: g.id, title: g.title, progress: goalProgress(g, inputs) };
     }
@@ -138,6 +140,7 @@ export function buildWeekPerson(args: {
         sessionsTarget,
         proteinDaysHit: 0,
         proteinDaysLogged: 0,
+        weeklyBySystem: {},
       };
       return { id: g.id, title: g.title, progress: goalProgress(g, inputs) };
     }

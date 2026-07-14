@@ -121,8 +121,10 @@ export function computeDailyMisses(args: {
   }
 
   // 6. Systems the user explicitly marked skip (Exercise skips are already
-  // covered by the session miss above, so exclude that domain).
+  // covered by the session miss above, so exclude that domain). Weekly-tracked
+  // systems are judged on the week, never as a daily miss.
   for (const s of systems) {
+    if (s.cadence === "weekly" || s.metric_type === "number") continue;
     if (statuses[s.id] === "skip" && s.domain !== "Exercise") {
       misses.push({
         what: `${s.name} marked skip`,

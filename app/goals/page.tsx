@@ -57,6 +57,7 @@ export default async function GoalsPage() {
     sleepConfig: readSleepConfig(profile?.coaching_prefs),
     exerciseConfig: readExerciseConfig(profile?.coaching_prefs),
     proteinTarget: targets.protein,
+    systems: sys,
     recent: (recent ?? []) as {
       date: string;
       meals: unknown;

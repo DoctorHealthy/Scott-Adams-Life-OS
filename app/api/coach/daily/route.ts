@@ -229,6 +229,7 @@ export async function POST(request: Request) {
     sleepConfig,
     exerciseConfig: exConfig,
     proteinTarget: eff.protein,
+    systems: sys,
     recent: recentFull,
   });
   const goalsWithProgress = goals.map((g) => ({
@@ -294,6 +295,7 @@ export async function POST(request: Request) {
       progress: g.progress,
       staleDays: stale.get(g.id) ?? null,
     })),
+    weeklyCounts: progressInputs.weeklyBySystem,
   });
 
   try {
