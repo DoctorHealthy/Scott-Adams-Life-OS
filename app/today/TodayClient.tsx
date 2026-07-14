@@ -34,7 +34,6 @@ import {
 import { readMindLog, emptyMindLog, type MindLog } from "@/lib/mind/config";
 import type { ScheduleConfig } from "@/lib/schedule/schedule";
 import type { DietWindow } from "@/lib/diet/config";
-import { sessionForDate } from "@/lib/today/plan";
 import { computeBriefingSignals } from "@/lib/today/briefing";
 import { deriveFocusLine } from "@/lib/today/focus";
 import { gemForDate } from "@/lib/mind/gems";
@@ -248,7 +247,6 @@ export default function TodayClient({
   });
 
   const gem = gemForDate(date);
-  const sessionDue = sessionForDate(exerciseConfig, date);
 
   // Today's one-line focus: the user's intention wins; otherwise a dynamic
   // line derived in code from the same signals as the briefing. Today only.
@@ -482,7 +480,7 @@ export default function TodayClient({
                 return renderRow(
                   s.id,
                   s.name,
-                  sessionDue,
+                  `${progressInputs.sessionsLast7}/${progressInputs.sessionsTarget} sessions this week`,
                   s.id,
                   <>
                     <ExerciseLogCard

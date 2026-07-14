@@ -21,20 +21,28 @@ export default function ExerciseLogCard({
     });
   }
 
+  const tracked = config.routines.filter((r) => r.track);
+  const minNames = config.routines
+    .filter((r) => r.track && r.min)
+    .map((r) => r.name);
+
   return (
     <div>
       <div className="toggle-list">
-        <ToggleRow
-          label="Warm-up done"
-          hint="the daily min, never zero"
-          on={value.warmup}
-          onClick={() => onChange({ ...value, warmup: !value.warmup })}
-        />
-        <ToggleRow
-          label="Prehab / mobility done"
-          on={value.ankle}
-          onClick={() => onChange({ ...value, ankle: !value.ankle })}
-        />
+        {tracked.map((r) => (
+          <ToggleRow
+            key={r.id}
+            label={`${r.name} done`}
+            hint={r.min ? "counts toward the daily Min" : undefined}
+            on={!!value.routines[r.id]}
+            onClick={() =>
+              onChange({
+                ...value,
+                routines: { ...value.routines, [r.id]: !value.routines[r.id] },
+              })
+            }
+          />
+        ))}
         <ToggleRow
           label="Real session done"
           on={value.session}
@@ -61,10 +69,15 @@ export default function ExerciseLogCard({
         </div>
       ) : null}
 
-      <p className="muted" style={{ fontSize: 13, marginTop: 12, marginBottom: 0 }}>
-        Min is warm-up plus prehab (plus a walk). Hold it every day, even when
-        you skip the session.
-      </p>
+      {minNames.length > 0 ? (
+        <p
+          className="muted"
+          style={{ fontSize: 13, marginTop: 12, marginBottom: 0 }}
+        >
+          Min is {minNames.join(" plus ")}. Hold it every day, even when you
+          skip the session.
+        </p>
+      ) : null}
     </div>
   );
 }

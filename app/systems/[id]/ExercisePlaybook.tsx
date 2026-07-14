@@ -6,25 +6,12 @@ import {
   computeExerciseStats,
   type ExerciseConfig,
   type ExerciseLog,
+  type Routine,
   type SessionType,
 } from "@/lib/exercise/exercise";
 import { saveExerciseConfig } from "@/app/exercise/actions";
 import EditableList from "@/components/EditableList";
-
-const STRUCTURE = [
-  {
-    title: "Strength-endurance (2 a week)",
-    body: "Higher-rep, density circuits, short rest. Push (push-up variations, pike, dips), pull (pull-ups, rows, hangs for grip), legs (lunges, Bulgarian split squats, pistols, jump squats), core (hollow holds, hanging leg raises, planks). Pick 4 to 5 moves, 3 to 4 rounds, EMOM or AMRAP.",
-  },
-  {
-    title: "Power (1 a week)",
-    body: "Explosive, low reps, full recovery, max intent. Box or broad jumps, plyo push-ups, kettlebell swings, med-ball throws. Outdoors: hill sprints, short and hard with full rest. Quality over fatigue.",
-  },
-  {
-    title: "Climbing / sport day",
-    body: "Bouldering counts as a full session. Warm the fingers first, easy problems before hard. Tennis or basketball counts too.",
-  },
-];
+import ToggleRow from "@/components/ToggleRow";
 
 export default function ExercisePlaybook({
   config,
@@ -43,6 +30,14 @@ export default function ExercisePlaybook({
   const today = localDateStr();
   const stats = computeExerciseStats(cfg, recent, today);
   const sessionsOk = stats.sessionsLast7 >= stats.sessionsTarget;
+
+  const minNames = cfg.routines
+    .filter((r) => r.track && r.min)
+    .map((r) => r.name);
+  const caption =
+    minNames.length > 0
+      ? `Min every day (${minNames.join(" plus ")}), ${stats.sessionsTarget} real sessions a week. Scale the session down on a low day, never skip the Min.`
+      : `Hold the Min every day, ${stats.sessionsTarget} real sessions a week.`;
 
   function update(next: ExerciseConfig) {
     cfgRef.current = next;
@@ -67,6 +62,35 @@ export default function ExercisePlaybook({
     setNewType("");
   }
 
+  function setRoutine(i: number, patch: Partial<Routine>) {
+    const routines = cfgRef.current.routines.map((r, j) =>
+      j === i ? { ...r, ...patch } : r
+    );
+    update({ ...cfgRef.current, routines });
+  }
+
+  function removeRoutine(i: number) {
+    const r = cfgRef.current.routines[i];
+    if (!window.confirm(`Remove "${r.name}"? This cannot be undone.`)) return;
+    update({
+      ...cfgRef.current,
+      routines: cfgRef.current.routines.filter((_, j) => j !== i),
+    });
+    commit("Routine removed.");
+  }
+
+  function addRoutine() {
+    const r: Routine = {
+      id: crypto.randomUUID(),
+      name: "New routine",
+      items: [],
+      min: false,
+      track: true,
+    };
+    update({ ...cfgRef.current, routines: [...cfgRef.current.routines, r] });
+    commit("Routine added.");
+  }
+
   return (
     <div className="stack">
       {/* Stats */}
@@ -84,13 +108,11 @@ export default function ExercisePlaybook({
           </div>
           <div className="step-big">
             <div className="step-num">{stats.floorStreak}</div>
-            <div className="step-cap">day floor streak</div>
+            <div className="step-cap">day Min streak</div>
           </div>
         </div>
         <p className="muted" style={{ marginTop: 14, marginBottom: 0, fontSize: 13 }}>
-          Floor every day (warm-up + ankle + walk), {stats.sessionsTarget} real
-          sessions a week. Scale the session down on a low day, never skip the
-          floor.
+          {caption}
         </p>
       </div>
 
@@ -171,61 +193,68 @@ export default function ExercisePlaybook({
         ) : null}
       </div>
 
-      {/* Bad-day floor */}
-      <div className="card">
-        <div className="eyebrow" style={{ marginBottom: 8 }}>
-          The floor (bad day)
-        </div>
-        <p style={{ margin: 0, lineHeight: 1.55 }}>
-          Ondra warm-up, the ankle routine, and a 10-minute walk. That still
-          counts. You scale down, you do not skip.
-        </p>
-      </div>
+      {/* Routines */}
+      {cfg.routines.map((r, i) => (
+        <div className="card" key={r.id}>
+          <div className="field">
+            <label>Routine name</label>
+            <input
+              value={r.name}
+              onChange={(e) => setRoutine(i, { name: e.target.value })}
+              onBlur={() => commit("Routine saved.")}
+            />
+          </div>
 
-      {/* Daily warm-up (editable) */}
-      <div className="card">
-        <div className="eyebrow" style={{ marginBottom: 10 }}>
-          Daily Ondra-style warm-up (edit your own)
-        </div>
-        <EditableList
-          items={cfg.warmup}
-          placeholder="Add a warm-up move"
-          onChange={(items) => update({ ...cfgRef.current, warmup: items })}
-          onCommit={() => commit("Warm-up saved.")}
-        />
-      </div>
+          <div className="field">
+            <label>Items</label>
+            <EditableList
+              items={r.items}
+              placeholder="Add an item"
+              onChange={(items) => setRoutine(i, { items })}
+              onCommit={() => commit("Routine saved.")}
+            />
+          </div>
 
-      {/* Weekly structure */}
-      <div className="card">
-        <div className="eyebrow" style={{ marginBottom: 10 }}>
-          Weekly session structure
-        </div>
-        <div className="struct-list">
-          {STRUCTURE.map((s) => (
-            <div className="struct-item" key={s.title}>
-              <div className="struct-title">{s.title}</div>
-              <div className="muted" style={{ lineHeight: 1.55 }}>{s.body}</div>
+          <div className="toggle-list">
+            <ToggleRow
+              label="Log daily on Today"
+              on={r.track}
+              onClick={() => {
+                setRoutine(i, { track: !r.track });
+                commit("Routine saved.");
+              }}
+            />
+            <div style={r.track ? undefined : { opacity: 0.5 }}>
+              <ToggleRow
+                label="Counts toward the daily Min"
+                on={r.min}
+                onClick={() => {
+                  if (!r.track) return;
+                  setRoutine(i, { min: !r.min });
+                  commit("Routine saved.");
+                }}
+              />
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Ankle (editable) */}
-      <div className="card">
-        <div className="eyebrow" style={{ marginBottom: 10 }}>
-          Left-ankle prehab (edit your own)
+          <button
+            className="btn btn-ghost btn-auto btn-danger"
+            style={{ marginTop: 12 }}
+            onClick={() => removeRoutine(i)}
+          >
+            Remove routine
+          </button>
         </div>
-        <EditableList
-          items={cfg.ankle}
-          placeholder="Add an ankle exercise"
-          onChange={(items) => update({ ...cfgRef.current, ankle: items })}
-          onCommit={() => commit("Ankle routine saved.")}
-        />
-        <p className="muted" style={{ marginBottom: 0, marginTop: 8, fontSize: 13 }}>
-          Normal soreness is fine. Sharp or lingering pain means back off and see
-          a physio. General guidance, not treatment.
-        </p>
-      </div>
+      ))}
+
+      <button className="btn btn-ghost btn-auto" onClick={addRoutine}>
+        + Add routine
+      </button>
+
+      <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 13 }}>
+        Normal soreness is fine. Sharp or lingering pain means back off and see a
+        physio. General guidance, not treatment.
+      </p>
     </div>
   );
 }

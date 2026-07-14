@@ -106,10 +106,10 @@ type ExerciseNumbers = {
   sessionsLast7: number;
   sessionsTarget: number;
   floorStreak: number;
-  warmupToday: boolean;
   sessionToday: boolean;
   sessionTypeToday: string | null;
-  ankleToday: boolean;
+  routinesDone: string[]; // tracked routine names done today
+  routinesMissed: string[]; // tracked routine names not done today
 };
 
 type MissLike = { what: string; context: string[] };
@@ -230,12 +230,14 @@ SLEEP (computed by the app; the active campaign)
 
 EXERCISE (computed by the app)
 - Sessions last 7 days: ${exercise.sessionsLast7} of ${exercise.sessionsTarget} target
-- Floor streak: ${exercise.floorStreak} days
-- Today: warm-up ${exercise.warmupToday ? "done" : "not done"}, session ${
+- Min streak: ${exercise.floorStreak} days
+- Today: session ${
     exercise.sessionToday
       ? `done (${exercise.sessionTypeToday ?? "type not set"})`
       : "not done"
-  }, ankle prehab ${exercise.ankleToday ? "done" : "not done"}
+  }
+- Routines done today: ${exercise.routinesDone.length ? exercise.routinesDone.join(", ") : "none"}
+- Routines not done today: ${exercise.routinesMissed.length ? exercise.routinesMissed.join(", ") : "none"}
 
 MISSES TODAY (detected by the code; diagnose the why from the facts, then give
 the concrete reversal per the rules)

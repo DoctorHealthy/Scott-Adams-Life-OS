@@ -274,12 +274,16 @@ export async function POST(request: Request) {
       sessionsLast7: exStats.sessionsLast7,
       sessionsTarget: exStats.sessionsTarget,
       floorStreak: exStats.floorStreak,
-      warmupToday: todayEx.warmup,
       sessionToday: todayEx.session,
       sessionTypeToday: todayEx.session
         ? sessionTypeLabel(exConfig, todayEx.sessionType)
         : null,
-      ankleToday: todayEx.ankle,
+      routinesDone: exConfig.routines
+        .filter((r) => r.track && todayEx.routines[r.id])
+        .map((r) => r.name),
+      routinesMissed: exConfig.routines
+        .filter((r) => r.track && !todayEx.routines[r.id])
+        .map((r) => r.name),
     },
     intention,
     misses,

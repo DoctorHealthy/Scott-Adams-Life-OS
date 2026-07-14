@@ -190,7 +190,22 @@ export function progressDaysFromEntries(
   }[]
 ): ProgressDay[] {
   return entries.map((e) => {
-    const ex = (e.module_logs?.exercise ?? {}) as {
+    // Handles both the legacy warmup/ankle log shape and the routines shape;
+    // only `session` feeds the partner view either way.
+    const exLog = (() => {
+      const raw = e.module_logs?.exercise;
+      if (raw && typeof raw === "object") {
+        const o = raw as { session?: unknown; warmup?: unknown; ankle?: unknown; routines?: unknown };
+        const routines = (o.routines ?? {}) as Record<string, unknown>;
+        return {
+          session: !!o.session,
+          warmup: !!(o.warmup ?? routines.warmup),
+          ankle: !!(o.ankle ?? routines.ankle),
+        };
+      }
+      return { session: false, warmup: false, ankle: false };
+    })();
+    const ex = exLog as {
       warmup?: unknown;
       session?: unknown;
       ankle?: unknown;
