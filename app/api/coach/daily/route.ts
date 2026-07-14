@@ -30,6 +30,13 @@ import { computeEnergyCorrelations } from "@/lib/review/weekly";
 import { computeDailyMisses } from "@/lib/review/misses";
 import { readScheduleConfig, rocksForWeekday } from "@/lib/schedule/schedule";
 import { goalStaleDays, type SnapshotReview } from "@/lib/review/stale";
+import {
+  commitmentAtRisk,
+  commitmentProgress,
+  weekStartOf,
+  type CommitmentRow,
+} from "@/lib/commitments/commitments";
+import { computeRecords, recordsBlock } from "@/lib/records/records";
 import { sessionForDate } from "@/lib/today/plan";
 import { hhmmToMin } from "@/lib/sleep/sleep";
 import type { Entry, System, SystemStatus } from "@/lib/types";
@@ -97,6 +104,19 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .order("period_end", { ascending: false })
       .limit(12),
+  ]);
+
+  const [{ data: commitmentRows }, { data: allEntries }] = await Promise.all([
+    supabase
+      .from("commitments")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("week_start", weekStartOf(date)),
+    supabase
+      .from("entries")
+      .select("date, energy_1_10, module_logs")
+      .eq("user_id", user.id)
+      .order("date", { ascending: true }),
   ]);
 
   if (!entry) {
@@ -296,6 +316,32 @@ export async function POST(request: Request) {
       staleDays: stale.get(g.id) ?? null,
     })),
     weeklyCounts: progressInputs.weeklyBySystem,
+    commitmentsBlock: ((commitmentRows ?? []) as CommitmentRow[])
+      .map((c) => {
+        const p = commitmentProgress({
+          c,
+          entries: recentFull,
+          systems: sys,
+          sleepConfig,
+          today: date,
+        });
+        const risk =
+          c.status === "active" && commitmentAtRisk(c, p, c.kind === "system_count")
+            ? " AT RISK"
+            : "";
+        return `- ${c.label}: ${c.status.toUpperCase()}${risk} (${p.count}/${p.target}, ${p.daysLeft} days left)`;
+      })
+      .join("\n") || "- none this week",
+    recordsBlock: recordsBlock(
+      computeRecords(
+        ((allEntries ?? []) as {
+          date: string;
+          energy_1_10: number | null;
+          module_logs: { sleep?: unknown; exercise?: unknown } | null;
+        }[]),
+        exConfig.routines
+      )
+    ),
   });
 
   try {

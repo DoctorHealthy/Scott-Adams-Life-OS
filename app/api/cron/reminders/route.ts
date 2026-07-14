@@ -27,13 +27,29 @@ import {
 } from "@/lib/reminders/engine";
 import { fetchTelegramUpdates, sendTelegram } from "@/lib/reminders/channels";
 import { deliver, type DeliveryTargets } from "@/lib/reminders/deliver";
+import {
+  commitmentProgress,
+  judgeCommitment,
+  type CommitmentRow,
+} from "@/lib/commitments/commitments";
 
 export const maxDuration = 60;
 
 type EntryRow = {
   user_id: string;
   date: string;
+  system_statuses: Record<string, "done" | "floor" | "skip"> | null;
   module_logs: { sleep?: unknown } | null;
+};
+
+type SystemRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  cadence: "daily" | "weekly";
+  metric_type: string;
+  target_per_week: number | null;
+  unit: string | null;
 };
 
 // Hit by cron-job.org every minute or few. Single Telegram consumer: processes
@@ -205,19 +221,30 @@ export async function GET(request: Request) {
   const minDate = addDays(dates[0], -13); // sleep stats need a look-back window
   const maxDate = dates[dates.length - 1];
 
-  const [{ data: reminders }, { data: systems }, { data: goals }, { data: entries }] =
-    await Promise.all([
-      admin.from("reminders").select("*").in("user_id", userIds).eq("enabled", true),
-      admin.from("systems").select("id, user_id, name").in("user_id", userIds),
-      admin.from("goals").select("id, user_id, title").in("user_id", userIds),
-      admin
-        .from("entries")
-        .select("user_id, date, module_logs")
-        .in("user_id", userIds)
-        .gte("date", minDate)
-        .lte("date", maxDate)
-        .order("date", { ascending: false }),
-    ]);
+  const [
+    { data: reminders },
+    { data: systems },
+    { data: goals },
+    { data: entries },
+    { data: activeCommitments },
+    { data: friendships },
+  ] = await Promise.all([
+    admin.from("reminders").select("*").in("user_id", userIds).eq("enabled", true),
+    admin
+      .from("systems")
+      .select("id, user_id, name, cadence, metric_type, target_per_week, unit")
+      .in("user_id", userIds),
+    admin.from("goals").select("id, user_id, title").in("user_id", userIds),
+    admin
+      .from("entries")
+      .select("user_id, date, system_statuses, module_logs")
+      .in("user_id", userIds)
+      .gte("date", minDate)
+      .lte("date", maxDate)
+      .order("date", { ascending: false }),
+    admin.from("commitments").select("*").in("user_id", userIds).eq("status", "active"),
+    admin.from("friendships").select("user_id, friend_id").eq("status", "accepted"),
+  ]);
 
   const sysName = new Map((systems ?? []).map((s) => [s.id as string, s.name as string]));
   const goalName = new Map((goals ?? []).map((g) => [g.id as string, g.title as string]));
@@ -382,6 +409,83 @@ export async function GET(request: Request) {
     }
   }
 
+  // ---- commitment judgment: code decides, then the phones hear about it ----
+  const systemsByUser = new Map<string, SystemRow[]>();
+  for (const s of (systems ?? []) as SystemRow[]) {
+    const list = systemsByUser.get(s.user_id) ?? [];
+    list.push(s);
+    systemsByUser.set(s.user_id, list);
+  }
+  const partnerOf = (uid: string): string | null => {
+    for (const f of friendships ?? []) {
+      if (f.user_id === uid) return f.friend_id as string;
+      if (f.friend_id === uid) return f.user_id as string;
+    }
+    return null;
+  };
+
+  let judged = 0;
+  for (const c of ((activeCommitments ?? []) as CommitmentRow[])) {
+    const uid = c.user_id;
+    const local = localByUser.get(uid);
+    const u = userById.get(uid);
+    if (!local || !u) continue;
+    const prefs = (u.coaching_prefs ?? {}) as Record<string, unknown>;
+    const own = (entriesByUser.get(uid) ?? []) as EntryRow[];
+
+    const progress = commitmentProgress({
+      c,
+      entries: own,
+      systems: systemsByUser.get(uid) ?? [],
+      sleepConfig: readSleepConfig(prefs),
+      today: local.date,
+    });
+    const verdict = judgeCommitment(progress, c.week_start, local.date);
+    if (verdict === "active") continue;
+
+    // The status transition is the send guard: only the run that flips the
+    // row from 'active' announces the verdict.
+    const { data: flipped } = await admin
+      .from("commitments")
+      .update({ status: verdict, judged_on: local.date })
+      .eq("id", c.id)
+      .eq("status", "active")
+      .select("id");
+    if (!flipped || flipped.length === 0) continue;
+    judged++;
+
+    const ownerChat = chatByUser.get(uid) ?? null;
+    if (verdict === "passed") {
+      if (ownerChat) {
+        await sendTelegram(
+          ownerChat,
+          `Commitment kept: ${c.label} (${progress.count}/${progress.target}). That is the standard.`
+        );
+      }
+      continue;
+    }
+
+    // Failed: tell the owner, and expose to the partner if the owner opted in.
+    if (ownerChat) {
+      await sendTelegram(
+        ownerChat,
+        `Commitment broken: ${c.label}. You got ${progress.count} of ${progress.target}. Debrief it before your next weekly review runs.`
+      );
+    }
+    const expose = !!(
+      (prefs.commitments as { exposePartner?: unknown } | undefined)?.exposePartner
+    );
+    const partnerId = partnerOf(uid);
+    const partnerChat = partnerId ? chatByUser.get(partnerId) ?? null : null;
+    if (expose && partnerChat) {
+      const name = (u.name as string | null) ?? "Your partner";
+      await sendTelegram(
+        partnerChat,
+        `${name} broke a commitment: ${c.label} (got ${progress.count} of ${progress.target}). Ask about it.`
+      );
+    }
+  }
+
   // Housekeeping.
   if (goneSubIds.length > 0) {
     await admin.from("push_subscriptions").delete().in("id", goneSubIds);
@@ -394,5 +498,5 @@ export async function GET(request: Request) {
     .delete()
     .lt("created_at", new Date(Date.now() - 3600_000).toISOString());
 
-  return NextResponse.json({ checked, sent, inboxHandled });
+  return NextResponse.json({ checked, sent, inboxHandled, judged });
 }

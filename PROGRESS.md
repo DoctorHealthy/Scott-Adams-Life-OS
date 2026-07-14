@@ -152,3 +152,13 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   vs target, and goals can link to any weekly-tracked system (weekly_system).
   System editor: cadence/target/unit fields + Start-from-template (Networking,
   Reading, Language practice, Skill practice).
+- R4 Commitments: DONE. Requires supabase/migrations/0010_commitments.sql
+  once. Weekly contracts (max 3, Monday weeks, code-judged: passed the moment
+  the target is met, failed at week end), Telegram verdicts, opt-in partner
+  exposure on failure (coaching_prefs.commitments.exposePartner; partner reads
+  via sanitized partner_commitments RPC, debriefs never leave the owner),
+  forced debrief gates the weekly review (min 20 chars, quoted back by the
+  coach later), Cookie Jar records (lib/records) in daily+weekly DATA with a
+  one-record rule, commitments in daily DATA with AT RISK detection, Today
+  shows a commitments card + 4-week momentum rings per system row, /weekly
+  hosts the manager (create/remove/history/exposure toggle).

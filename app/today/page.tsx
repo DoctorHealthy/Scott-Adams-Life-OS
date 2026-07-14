@@ -9,6 +9,12 @@ import { readExerciseConfig } from "@/lib/exercise/exercise";
 import { readScheduleConfig } from "@/lib/schedule/schedule";
 import { goalFromRow, type GoalRow } from "@/lib/goals/goals";
 import { readReviewConfig } from "@/lib/review/config";
+import { localDateStr } from "@/lib/constants";
+import {
+  commitmentProgress,
+  weekStartOf,
+  type CommitmentRow,
+} from "@/lib/commitments/commitments";
 import type { DietMeal } from "@/lib/diet/meals";
 import type { System } from "@/lib/types";
 import type { RecentDay } from "./TodayClient";
@@ -35,7 +41,7 @@ export default async function TodayPage() {
         .select("date, energy_1_10, system_statuses, meals, module_logs")
         .eq("user_id", user.id)
         .order("date", { ascending: false })
-        .limit(21),
+        .limit(35), // 28 days of momentum plus slack
       supabase
         .from("goals")
         .select("*")
@@ -65,6 +71,32 @@ export default async function TodayPage() {
       ? dietConfig.menu.map((id) => byId.get(id)).filter((m): m is DietMeal => !!m)
       : dietConfig.meals;
 
+  // This week's commitments with code-computed progress (read-only on Today).
+  const today = localDateStr();
+  const { data: commitmentRows } = await supabase
+    .from("commitments")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("week_start", weekStartOf(today))
+    .order("created_at", { ascending: true });
+  const commitments = ((commitmentRows ?? []) as CommitmentRow[]).map((c) => {
+    const p = commitmentProgress({
+      c,
+      entries: (recent ?? []) as RecentDay[],
+      systems: (systems as System[]) ?? [],
+      sleepConfig,
+      today,
+    });
+    return {
+      id: c.id,
+      label: c.label,
+      status: c.status,
+      count: p.count,
+      target: p.target,
+      daysLeft: p.daysLeft,
+    };
+  });
+
   return (
     <div className="shell">
       <TopNav email={user.email} />
@@ -83,6 +115,7 @@ export default async function TodayPage() {
             goalFromRow(r, (systems as System[]) ?? [])
           )}
           reviewWeeklyDay={readReviewConfig(profile?.coaching_prefs).weeklyDay}
+          commitments={commitments}
         />
       </main>
     </div>

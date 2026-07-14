@@ -19,7 +19,12 @@ import {
   type WeekEntry,
 } from "@/lib/review/weekly";
 import { goalStaleDays, type SnapshotReview } from "@/lib/review/stale";
-import { addDays } from "@/lib/constants";
+import {
+  commitmentProgress,
+  type CommitmentRow,
+} from "@/lib/commitments/commitments";
+import { computeRecords, recordsBlock } from "@/lib/records/records";
+import { addDays, localDateStr } from "@/lib/constants";
 import type { System } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -43,31 +48,63 @@ export async function POST(request: Request) {
   }
   const start = addDays(end, -6);
 
-  const [{ data: profile }, { data: systems }, { data: entries }, { data: goalRows }] =
-    await Promise.all([
-      supabase.from("users").select("*").eq("id", user.id).single(),
-      supabase
-        .from("systems")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      // Pull a little past the window so goal-progress (which reads recent
-      // days) and the sleep stats have context.
-      supabase
-        .from("entries")
-        .select("date, energy_1_10, system_statuses, meals, module_logs")
-        .eq("user_id", user.id)
-        .lte("date", end)
-        .order("date", { ascending: false })
-        .limit(21),
-      supabase
-        .from("goals")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .order("created_at", { ascending: true }),
-    ]);
+  const [
+    { data: profile },
+    { data: systems },
+    { data: entries },
+    { data: goalRows },
+    { data: commitmentRows },
+    { data: allEntries },
+  ] = await Promise.all([
+    supabase.from("users").select("*").eq("id", user.id).single(),
+    supabase
+      .from("systems")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    // Pull a little past the window so goal-progress (which reads recent
+    // days) and the sleep stats have context.
+    supabase
+      .from("entries")
+      .select("date, energy_1_10, system_statuses, meals, module_logs")
+      .eq("user_id", user.id)
+      .lte("date", end)
+      .order("date", { ascending: false })
+      .limit(21),
+    supabase
+      .from("goals")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("commitments")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("week_start", { ascending: false })
+      .limit(12),
+    // Full history for the Cookie Jar records (light columns only).
+    supabase
+      .from("entries")
+      .select("date, energy_1_10, module_logs")
+      .eq("user_id", user.id)
+      .order("date", { ascending: true }),
+  ]);
+
+  // The forced debrief: a failed commitment without a debrief blocks the
+  // weekly review until the user writes the why and the reversal.
+  const commitments = (commitmentRows ?? []) as CommitmentRow[];
+  const needsDebrief = commitments.find((c) => c.status === "failed" && !c.debrief);
+  if (needsDebrief) {
+    return NextResponse.json({
+      needsDebrief: {
+        id: needsDebrief.id,
+        label: needsDebrief.label,
+        week_start: needsDebrief.week_start,
+      },
+    });
+  }
 
   const sys = (systems as System[]) ?? [];
   const rows = (entries ?? []) as WeekEntry[];
@@ -147,7 +184,41 @@ export async function POST(request: Request) {
     );
   }
 
-  const prompt = buildWeeklyReviewPrompt({ profile: profile ?? null, stats });
+  // Commitments: progress computed in code for the DATA block. Include the
+  // most recent debriefed failure so the coach can quote the user's own words.
+  const today = localDateStr();
+  const commitmentLines = commitments
+    .slice(0, 6)
+    .map((c) => {
+      const p = commitmentProgress({
+        c,
+        entries: rows,
+        systems: sys,
+        sleepConfig,
+        today,
+      });
+      return `- [week of ${c.week_start}] ${c.label}: ${c.status.toUpperCase()} (${p.count}/${p.target})`;
+    })
+    .join("\n");
+  const lastDebriefed = commitments.find((c) => c.status === "failed" && c.debrief);
+  const debriefLine = lastDebriefed
+    ? `Most recent failed commitment: "${lastDebriefed.label}". The user's own debrief: "${lastDebriefed.debrief}"`
+    : "none";
+
+  const records = recordsBlock(
+    computeRecords(
+      ((allEntries ?? []) as { date: string; energy_1_10: number | null; module_logs: { sleep?: unknown; exercise?: unknown } | null }[]),
+      exerciseConfig.routines
+    )
+  );
+
+  const prompt = buildWeeklyReviewPrompt({
+    profile: profile ?? null,
+    stats,
+    commitmentsBlock: commitmentLines || "- none set",
+    debriefBlock: debriefLine,
+    recordsBlock: records,
+  });
 
   let text: string;
   try {

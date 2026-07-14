@@ -52,17 +52,17 @@ export type TrackingEntryLike = {
   module_logs: unknown;
 };
 
-// How many times this system happened in the last-7 window ending at `end`
-// (inclusive): counters sum their bumps; status systems count done/Min days.
-export function weeklyCount(
+// How many times this system happened inside a fixed date window (inclusive):
+// counters sum their bumps; status systems count done/Min days.
+export function windowCount(
   s: SystemTrackingLike,
   entries: TrackingEntryLike[],
-  end: string
+  from: string,
+  to: string
 ): number {
-  const from = addDays(end, -6);
   let total = 0;
   for (const e of entries) {
-    if (e.date < from || e.date > end) continue;
+    if (e.date < from || e.date > to) continue;
     if (isCounter(s)) {
       total += readCounters(e.module_logs)[s.id] ?? 0;
     } else {
@@ -71,6 +71,15 @@ export function weeklyCount(
     }
   }
   return total;
+}
+
+// Rolling last-7 window ending at `end` (inclusive).
+export function weeklyCount(
+  s: SystemTrackingLike,
+  entries: TrackingEntryLike[],
+  end: string
+): number {
+  return windowCount(s, entries, addDays(end, -6), end);
 }
 
 export type WeeklyProgress = { count: number; target: number | null };

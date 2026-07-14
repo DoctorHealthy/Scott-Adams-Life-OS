@@ -44,6 +44,11 @@ HARD RULES
   flagged stale, or today's work clearly served one), tie the day to a goal or
   the vision in one line. Do not do this every day. If a goal is flagged stale,
   call it out and attach the smallest next move.
+- COMMITMENTS: if one is AT RISK, say so plainly and order the exact catch-up
+  (what, when). If one already FAILED this week, name it without consolation.
+- THE COOKIE JAR: when the reflection shows weakness or a commitment is at
+  risk or failed, throw exactly ONE record from RECORDS back as proof of
+  capability. Quote the number as given; never invent a record.
 - Persona: hardcore, directive, strategic, tight. No filler, no preamble, no
   emojis, no em dashes, no double dashes. Reads numbers, never computes them.
 - Respect the user's constraints (see profile).
@@ -130,6 +135,8 @@ export function buildDailyReviewPrompt(args: {
   vision: string;
   goals: GoalLine[];
   weeklyCounts: Record<string, { count: number; target: number | null }>;
+  commitmentsBlock: string;
+  recordsBlock: string;
 }): string {
   const {
     profile,
@@ -146,6 +153,8 @@ export function buildDailyReviewPrompt(args: {
     vision,
     goals,
     weeklyCounts,
+    commitmentsBlock,
+    recordsBlock,
   } = args;
 
   // ---- numbers computed in code; the model only reads them ----
@@ -285,6 +294,13 @@ ${
     : "- no active goals"
 }
 
+THIS WEEK'S COMMITMENTS (judged by code; AT RISK means the remaining days
+cannot cover the gap at one per day)
+${commitmentsBlock}
+
+RECORDS (the cookie jar; quote at most one, only when the rules say so)
+${recordsBlock}
+
 THE USER'S OWN WORDS TODAY
 - Morning intention: ${intention ?? "not set"}
 - Evening reflection: ${entry.reflection ?? "not logged"}
@@ -405,6 +421,13 @@ HARD RULES
   percentages). If something is missing, say "not logged".
 - The correlations in the DATA are already computed. Quote them; do not derive
   new ones or claim a pattern the data does not show.
+- COMMITMENTS are judged by code; the verdicts in the DATA are final. If a
+  commitment FAILED, it leads the review: name it, quote the user's own debrief
+  back at them if one exists, no consolation, then the exact reversal. If all
+  passed, one hard line of respect, no gushing.
+- THE COOKIE JAR: when the user's words show weakness or a commitment failed or
+  is at risk, throw exactly ONE record from RECORDS back at them as proof of
+  what they have already done. Quote the number as given.
 - Persona: hardcore, directive, strategic, tight. No filler, no preamble, no
   emojis, no em dashes, no double dashes.
 - Respect the user's constraints (see profile).
@@ -495,8 +518,11 @@ type WeeklyStatsLike = {
 export function buildWeeklyReviewPrompt(args: {
   profile: ProfileLike | null;
   stats: WeeklyStatsLike;
+  commitmentsBlock: string;
+  debriefBlock: string;
+  recordsBlock: string;
 }): string {
-  const { profile, stats: s } = args;
+  const { profile, stats: s, commitmentsBlock, debriefBlock, recordsBlock } = args;
 
   const p = profile;
   const profileBlock = p
@@ -588,6 +614,13 @@ SLEEP-SHIFT CAMPAIGN
 
 GOAL MOVEMENT
 ${goalLines}
+
+COMMITMENTS (judged by code; verdicts are final)
+${commitmentsBlock}
+- ${debriefBlock}
+
+RECORDS (the cookie jar; quote at most one, only when the rules say so)
+${recordsBlock}
 
 =====  END DATA  =====
 

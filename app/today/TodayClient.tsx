@@ -56,6 +56,46 @@ import {
   readCounters,
   type CounterMap,
 } from "@/lib/tracking/tracking";
+import { momentumPct } from "@/lib/commitments/commitments";
+
+export type TodayCommitment = {
+  id: string;
+  label: string;
+  status: "active" | "passed" | "failed";
+  count: number;
+  target: number;
+  daysLeft: number;
+};
+
+// A tiny 4-week adherence ring next to each system's name. Pure SVG, inline
+// styles (never depends on the CSS bundle).
+function MomentumRing({ pct }: { pct: number }) {
+  const r = 6;
+  const c = 2 * Math.PI * r;
+  const on = (pct / 100) * c;
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      aria-label={`4-week momentum ${pct}%`}
+      style={{ flexShrink: 0 }}
+    >
+      <circle cx="8" cy="8" r={r} fill="none" stroke="var(--border)" strokeWidth="2.5" />
+      <circle
+        cx="8"
+        cy="8"
+        r={r}
+        fill="none"
+        stroke={pct >= 70 ? "var(--good)" : pct >= 40 ? "var(--accent)" : "var(--bad)"}
+        strokeWidth="2.5"
+        strokeDasharray={`${on} ${c - on}`}
+        strokeLinecap="round"
+        transform="rotate(-90 8 8)"
+      />
+    </svg>
+  );
+}
 
 const STATUSES: SystemStatus[] = ["done", "floor", "skip"];
 
@@ -79,6 +119,7 @@ export default function TodayClient({
   recent,
   goals,
   reviewWeeklyDay,
+  commitments,
 }: {
   userId: string;
   systems: System[];
@@ -91,6 +132,7 @@ export default function TodayClient({
   recent: RecentDay[];
   goals: Goal[];
   reviewWeeklyDay: number;
+  commitments: TodayCommitment[];
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -381,6 +423,11 @@ export default function TodayClient({
     </div>
   );
 
+  // Momentum: rolling 4-week adherence per system, computed in code.
+  const momentum = new Map(
+    systems.map((s) => [s.id, momentumPct(s, recent, today)])
+  );
+
   const renderRow = (
     rowKey: string,
     title: string,
@@ -390,11 +437,13 @@ export default function TodayClient({
     control?: ReactNode
   ) => {
     const open = !!openRows[rowKey];
+    const m = momentum.get(rowKey);
     return (
       <div className={`sysrow${open ? " open" : ""}`} key={rowKey}>
         <div className="sysrow-head">
           <button className="sysrow-main" onClick={() => toggleRow(rowKey)}>
             <span className="sysrow-chevron">{open ? "−" : "+"}</span>
+            {m != null ? <MomentumRing pct={m} /> : null}
             <span className="sysrow-name">{title}</span>
             {glance ? <span className="sysrow-glance">{glance}</span> : null}
           </button>
@@ -699,6 +748,76 @@ export default function TodayClient({
         onPersist={persistGoals}
         fullViewHref="/goals"
       />
+
+      {/* This week's commitments: read-only progress; managed on /weekly. */}
+      {commitments.length > 0 ? (
+        <div className="card">
+          <div className="card-head-row">
+            <span className="block-title">Commitments</span>
+            <Link href="/weekly" className="link" style={{ fontSize: 13 }}>
+              Manage
+            </Link>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {commitments.map((c) => (
+              <div key={c.id}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    fontSize: 13,
+                    marginBottom: 4,
+                  }}
+                >
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c.label}
+                  </span>
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      fontVariantNumeric: "tabular-nums",
+                      color:
+                        c.status === "passed"
+                          ? "var(--good)"
+                          : c.status === "failed"
+                            ? "var(--bad)"
+                            : "var(--muted)",
+                    }}
+                  >
+                    {c.status === "active"
+                      ? `${c.count}/${c.target} · ${c.daysLeft}d left`
+                      : c.status.toUpperCase()}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    height: 5,
+                    borderRadius: 999,
+                    background: "var(--panel-2)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${Math.min(100, Math.round((c.count / c.target) * 100))}%`,
+                      background:
+                        c.status === "failed" ? "var(--bad)" : "var(--accent)",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* Weekly review entry point, highlighted on the chosen review day. */}
       <Link

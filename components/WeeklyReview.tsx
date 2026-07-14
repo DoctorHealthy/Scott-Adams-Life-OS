@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { prettyDate } from "@/lib/constants";
 import { WEEKDAY_LABELS } from "@/lib/review/config";
 import { setWeeklyReviewDay } from "@/app/weekly/actions";
+import { saveDebrief } from "@/app/commitments/actions";
 import type { WeeklyStats } from "@/lib/review/weekly";
+
+type DebriefGate = { id: string; label: string; week_start: string };
 
 const LABEL_TEXT: Record<WeeklyStats["systems"][number]["label"], string> = {
   autopilot: "autopilot",
@@ -146,6 +149,10 @@ export default function WeeklyReview({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [gate, setGate] = useState<DebriefGate | null>(null);
+  const [debriefText, setDebriefText] = useState("");
+  const [debriefError, setDebriefError] = useState<string | null>(null);
+  const [savingDebrief, setSavingDebrief] = useState(false);
 
   const ranForToday = shownEnd === today;
 
@@ -167,7 +174,11 @@ export default function WeeklyReview({
             ? "Coach is busy right now. Tap to retry."
             : json?.error || `Request failed (${res.status}).`
         );
+      } else if (json?.needsDebrief) {
+        // A failed commitment blocks the review until it is debriefed.
+        setGate(json.needsDebrief as DebriefGate);
       } else {
+        setGate(null);
         setStats(json.stats as WeeklyStats);
         setNarration(json.text as string);
         setShownEnd(today);
@@ -178,6 +189,21 @@ export default function WeeklyReview({
       setError("Coach is busy right now. Tap to retry.");
     }
     setLoading(false);
+  }
+
+  async function submitDebrief() {
+    if (!gate) return;
+    setDebriefError(null);
+    setSavingDebrief(true);
+    const res = await saveDebrief(gate.id, debriefText);
+    setSavingDebrief(false);
+    if ("error" in res) {
+      setDebriefError(res.error);
+    } else {
+      setGate(null);
+      setDebriefText("");
+      run();
+    }
   }
 
   return (
@@ -237,7 +263,35 @@ export default function WeeklyReview({
         ) : null}
       </div>
 
-      {narration ? (
+      {gate ? (
+        <div className="card">
+          <div className="block-title">Debrief required</div>
+          <p style={{ margin: "8px 0 0", fontWeight: 600 }}>{gate.label}</p>
+          <p className="muted" style={{ margin: "6px 0 12px", fontSize: 14 }}>
+            Why did it break, and what is the exact reversal? Your words, on the
+            record.
+          </p>
+          <textarea
+            rows={4}
+            value={debriefText}
+            onChange={(e) => setDebriefText(e.target.value)}
+            placeholder="The real why, and the exact reversal."
+          />
+          {debriefError ? (
+            <div className="alert alert-error" style={{ marginTop: 12 }}>
+              {debriefError}
+            </div>
+          ) : null}
+          <button
+            className="btn btn-primary btn-auto"
+            style={{ marginTop: 12 }}
+            onClick={submitDebrief}
+            disabled={savingDebrief}
+          >
+            {savingDebrief ? "Saving..." : "Save debrief and run the review"}
+          </button>
+        </div>
+      ) : narration ? (
         <div className="card">
           <div className="block-head">
             <span className="block-title">Coach</span>
@@ -249,7 +303,7 @@ export default function WeeklyReview({
         </div>
       ) : null}
 
-      {stats ? <StatsView stats={stats} /> : null}
+      {!gate && stats ? <StatsView stats={stats} /> : null}
 
       {past.length > 0 ? (
         <div className="card">
