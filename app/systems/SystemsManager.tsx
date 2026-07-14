@@ -119,7 +119,7 @@ export default function SystemsManager({
   async function remove(s: System) {
     if (
       !window.confirm(
-        `Delete "${s.name}" permanently? This cannot be undone. To keep its history, archive it instead.`
+        `Delete "${s.name}" permanently? This cannot be undone. To keep its history, pause it instead.`
       )
     )
       return;
@@ -205,7 +205,7 @@ export default function SystemsManager({
             disabled={busyId === s.id}
             onClick={() => toggleActive(s)}
           >
-            {s.active ? "Archive" : "Restore"}
+            {s.active ? "Pause" : "Resume"}
           </button>
           <button
             className="btn btn-ghost btn-danger"
@@ -257,7 +257,9 @@ export default function SystemsManager({
 
       {archived.length > 0 ? (
         <div>
-          <div className="section-label">Archived</div>
+          <div className="section-label">
+            Paused <span className="muted">- not counted anywhere until you resume</span>
+          </div>
           <div className="system-grid">{archived.map((s) => card(s))}</div>
         </div>
       ) : null}

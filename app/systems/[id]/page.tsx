@@ -8,6 +8,7 @@ import ExercisePlaybook from "./ExercisePlaybook";
 import MindPlaybook from "./MindPlaybook";
 import SchedulePlaybook from "./SchedulePlaybook";
 import GenericPlaybook from "./GenericPlaybook";
+import PauseButton from "./PauseButton";
 import { computeTargets } from "@/lib/diet/targets";
 import { readDietConfig } from "@/lib/diet/config";
 import { readSleepConfig, readSleepLog } from "@/lib/sleep/sleep";
@@ -78,6 +79,9 @@ export default async function PlaybookPage({
                 {sys.rule}
               </p>
             ) : null}
+            <div style={{ marginTop: 14 }}>
+              <PauseButton id={sys.id} active={sys.active} />
+            </div>
           </div>
 
           {domain === "Diet" ? (

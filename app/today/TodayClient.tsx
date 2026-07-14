@@ -8,6 +8,7 @@ import { addDays, localDateStr, prettyDate, STATUS_META } from "@/lib/constants"
 import type { System, SystemStatus } from "@/lib/types";
 import { saveEntry } from "@/app/checkin/actions";
 import { saveGoalsForYear } from "@/app/goals/actions";
+import { setSystemActive } from "@/app/systems/actions";
 import CoachReview from "@/components/CoachReview";
 import AskCoach from "@/components/AskCoach";
 import Modal from "@/components/Modal";
@@ -638,11 +639,53 @@ export default function TodayClient({
 }
 
 function RowFoot({ sys, label }: { sys: System | null; label?: string }) {
+  const router = useRouter();
+  const [pausing, setPausing] = useState(false);
+
+  async function handlePause() {
+    if (!sys) return;
+    if (
+      !window.confirm(
+        "Pause this system? It stops counting everywhere until you resume it under Systems."
+      )
+    )
+      return;
+    setPausing(true);
+    await setSystemActive(sys.id, false);
+    router.refresh();
+  }
+
   return (
-    <div className="sys-card-foot">
+    <div
+      className="sys-card-foot"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+      }}
+    >
       <Link href={sys ? `/systems/${sys.id}` : "/systems"} className="link">
         {label ?? "Open playbook"}
       </Link>
+      {sys ? (
+        <button
+          type="button"
+          className="muted"
+          onClick={handlePause}
+          disabled={pausing}
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            width: "auto",
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+        >
+          {pausing ? "Pausing..." : "Pause"}
+        </button>
+      ) : null}
     </div>
   );
 }
