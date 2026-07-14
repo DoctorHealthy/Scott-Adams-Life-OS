@@ -260,7 +260,6 @@ export default function TodayClient({
       wake: readSleepLog(r.module_logs?.sleep).wake,
     }))
   );
-  const sleepSystem = systems.find((s) => s.domain === "Sleep");
 
   // Today's one-line focus: the user's intention wins; otherwise a dynamic
   // line derived in code from the same signals as the briefing. Today only.
@@ -405,52 +404,6 @@ export default function TodayClient({
         </div>
       </div>
 
-      {/* Sleep-shift campaign strip: one slim row, today only, until at goal. */}
-      {isToday && !sleepStats.atGoal
-        ? (() => {
-            const stripStyle = {
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: "10px 16px",
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              flexWrap: "wrap",
-              fontSize: 13,
-            } as const;
-            const content = (
-              <>
-                <span style={{ fontWeight: 600 }}>Sleep campaign</span>
-                <span className="muted">·</span>
-                <span>Step {stepNumber(sleepConfig)}</span>
-                <span className="muted">·</span>
-                {sleepStats.eligible ? (
-                  <span style={{ color: "var(--accent)" }}>ready to advance</span>
-                ) : (
-                  <span>
-                    hold {sleepStats.holdStreak}/{HOLD_DAYS}
-                  </span>
-                )}
-                <span className="muted">·</span>
-                <span>wake {sleepConfig.currentWake}</span>
-                <span className="muted">·</span>
-                <span>bed {targetBedtime(sleepConfig)}</span>
-              </>
-            );
-            return sleepSystem ? (
-              <Link
-                href={`/systems/${sleepSystem.id}`}
-                style={{ ...stripStyle, color: "inherit", textDecoration: "none" }}
-              >
-                {content}
-              </Link>
-            ) : (
-              <div style={stripStyle}>{content}</div>
-            );
-          })()
-        : null}
-
       {/* Time-aware in-app reminders, computed in code from the clock. */}
       {isToday ? (
         <Nudges sleepConfig={sleepConfig} sleepLog={sleepLog} dietWindow={dietWindow} />
@@ -480,6 +433,37 @@ export default function TodayClient({
                   `Wake ${sleepConfig.currentWake}`,
                   s.id,
                   <>
+                    {!sleepStats.atGoal ? (
+                      <div
+                        className="muted"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 10,
+                          fontSize: 13,
+                          marginBottom: 12,
+                          paddingBottom: 12,
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, color: "var(--text)" }}>
+                          Campaign
+                        </span>
+                        <span>Step {stepNumber(sleepConfig)}</span>
+                        {sleepStats.eligible ? (
+                          <span style={{ color: "var(--accent)" }}>
+                            ready to advance
+                          </span>
+                        ) : (
+                          <span>
+                            hold {sleepStats.holdStreak}/{HOLD_DAYS}
+                          </span>
+                        )}
+                        <span>wake {sleepConfig.currentWake}</span>
+                        <span>bed {targetBedtime(sleepConfig)}</span>
+                      </div>
+                    ) : null}
                     <SleepLogCard
                       config={sleepConfig}
                       value={sleepLog}

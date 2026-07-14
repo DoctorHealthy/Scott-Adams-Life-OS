@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TopNav from "@/components/TopNav";
 import RemindersManager from "@/components/RemindersManager";
-import { readSleepConfig } from "@/lib/sleep/sleep";
+import { readSleepConfig, hhmmToMin } from "@/lib/sleep/sleep";
 import { readDietConfig } from "@/lib/diet/config";
 import { autoRemindersFor, fmtTimeMin } from "@/lib/reminders/engine";
 import type { CustomReminder } from "@/lib/reminders/engine";
@@ -62,18 +62,23 @@ export default async function RemindersPage() {
     ? remCfg.autoDisabled.filter((x): x is string => typeof x === "string")
     : [];
 
-  const autos = autoRemindersFor(
-    readSleepConfig(prefs),
-    readDietConfig(prefs).window
-  ).map((a) => ({
-    key: a.key,
-    label: a.label,
-    time: fmtTimeMin(a.timeMin),
-    message: a.message,
-  }));
+  // Order everything by the flow of the user's day: minutes since their wake
+  // target, so a post-midnight wind-down sorts to the evening, not the top.
+  const sleepConfig = readSleepConfig(prefs);
+  const wakeMin = hhmmToMin(sleepConfig.currentWake);
+  const dayOrder = (min: number) => (min - wakeMin + 1440) % 1440;
 
-  const rows: ReminderRow[] = ((reminders ?? []) as (ReminderRow & { weekdays: unknown })[]).map(
-    (r) => ({
+  const autos = autoRemindersFor(sleepConfig, readDietConfig(prefs).window)
+    .sort((a, b) => dayOrder(a.timeMin) - dayOrder(b.timeMin))
+    .map((a) => ({
+      key: a.key,
+      label: a.label,
+      time: fmtTimeMin(a.timeMin),
+      message: a.message,
+    }));
+
+  const rows: ReminderRow[] = ((reminders ?? []) as (ReminderRow & { weekdays: unknown })[])
+    .map((r) => ({
       id: r.id,
       label: r.label,
       time: r.time,
@@ -86,8 +91,8 @@ export default async function RemindersPage() {
       enabled: r.enabled,
       linked_system_id: r.linked_system_id,
       linked_goal_id: r.linked_goal_id,
-    })
-  );
+    }))
+    .sort((a, b) => dayOrder(hhmmToMin(a.time)) - dayOrder(hhmmToMin(b.time)));
 
   return (
     <div className="shell">

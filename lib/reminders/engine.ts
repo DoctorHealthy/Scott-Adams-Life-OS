@@ -137,13 +137,22 @@ export function wakeReplyAccepted(targetWakeMin: number, nowMin: number): boolea
   return d >= -180 && d <= 360; // 3h early to 6h late
 }
 
+// "45 min", "1 h", "5 h 53 min": nobody should have to divide by 60.
+export function fmtDriftMin(min: number): string {
+  const abs = Math.abs(Math.round(min));
+  if (abs < 60) return `${abs} min`;
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
 export function wakeLoggedMessage(wake: string, driftMin: number): string {
   const drift =
     driftMin === 0
       ? "on target"
       : driftMin > 0
-        ? `${driftMin} min late`
-        : `${-driftMin} min early`;
+        ? `${fmtDriftMin(driftMin)} late`
+        : `${fmtDriftMin(driftMin)} early`;
   return `Wake logged: ${wake} (${drift}). Now light: outside within the hour.`;
 }
 
@@ -153,7 +162,7 @@ export function wakeRejectedMessage(targetWake: string): string {
 
 export function recoveryMessage(driftMin: number, targetWake: string): string {
   return [
-    `Rough night: ${driftMin} min past the ${targetWake} target. Run the recovery protocol, no drama:`,
+    `Rough night: ${fmtDriftMin(driftMin)} past the ${targetWake} target. Run the recovery protocol, no drama:`,
     `1. Light now, 10 to 20 minutes outside.`,
     `2. No naps after 15:00.`,
     `3. Dinner on time, nothing late.`,
