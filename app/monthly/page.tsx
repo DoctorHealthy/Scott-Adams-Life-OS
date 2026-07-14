@@ -57,6 +57,31 @@ export default async function MonthlyPage() {
             past={past}
           />
 
+          {/* Export: files download directly; the markdown is written to be
+              pasted into an AI. No AI runs to produce them. */}
+          <div className="card">
+            <div className="block-title">Export this month</div>
+            <p className="muted" style={{ margin: "6px 0 12px", fontSize: 13 }}>
+              Everything from {localDateStr().slice(0, 7)}: logs, stats,
+              reviews, commitments. The markdown version is formatted for
+              pasting into an AI.
+            </p>
+            <div className="btn-row">
+              <a
+                className="btn btn-auto"
+                href={`/api/export?month=${localDateStr().slice(0, 7)}&format=md`}
+              >
+                Markdown for AI
+              </a>
+              <a
+                className="btn btn-auto"
+                href={`/api/export?month=${localDateStr().slice(0, 7)}&format=json`}
+              >
+                Raw JSON
+              </a>
+            </div>
+          </div>
+
           <div className="btn-row">
             <Link href="/trends" className="btn btn-auto">
               Trends

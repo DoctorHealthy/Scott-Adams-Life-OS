@@ -76,32 +76,42 @@ export default function CommitmentsManager({
   exposePartner: boolean;
 }) {
   const router = useRouter();
-  const [kind, setKind] = useState<"system_count" | "wake_hold">(
-    "system_count"
-  );
-  const [systemId, setSystemId] = useState<string>(systems[0]?.id ?? "");
-  const [systemTarget, setSystemTarget] = useState(3);
-  const [wakeDays, setWakeDays] = useState(5);
+  // One picker for everything you can commit to: any system, or the wake hold.
+  const WAKE = "wake";
+  const [picked, setPicked] = useState<string>(systems[0]?.id ?? WAKE);
+  const [target, setTarget] = useState(3);
   const [toleranceMin, setToleranceMin] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Optimistic exposure toggle: flip instantly, persist behind the scenes.
+  const [expose, setExpose] = useState(exposePartner);
 
+  const isWake = picked === WAKE;
+  const maxTarget = isWake ? 7 : 21;
   const canAdd = currentWeek.length < 3;
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const input =
-      kind === "wake_hold"
-        ? { kind, systemId: null, target: wakeDays, toleranceMin }
-        : { kind, systemId: systemId || null, target: systemTarget };
+    const input = isWake
+      ? { kind: "wake_hold" as const, systemId: null, target, toleranceMin }
+      : { kind: "system_count" as const, systemId: picked || null, target };
     const res = await createCommitment(input);
     setSubmitting(false);
     if ("error" in res) {
       setError(res.error);
     } else {
       router.refresh();
+    }
+  }
+
+  async function toggleExpose(next: boolean) {
+    setExpose(next); // instant feedback; revert only if the save fails
+    const res = await setExposePartner(next);
+    if ("error" in res) {
+      setExpose(!next);
+      setError(res.error);
     }
   }
 
@@ -190,73 +200,52 @@ export default function CommitmentsManager({
         {canAdd ? (
           <form onSubmit={add} style={{ marginTop: 18 }}>
             <div className="field">
-              <label>Commitment type</label>
+              <label>What are you committing to?</label>
               <select
-                value={kind}
-                onChange={(e) =>
-                  setKind(e.target.value as "system_count" | "wake_hold")
-                }
+                value={picked}
+                onChange={(e) => {
+                  setPicked(e.target.value);
+                  if (e.target.value === WAKE && target > 7) setTarget(7);
+                }}
               >
-                <option value="system_count">A system happens N times</option>
-                <option value="wake_hold">Hold the wake target N days</option>
+                {systems.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.metric_type === "number" && s.unit ? ` (${s.unit})` : ""}
+                  </option>
+                ))}
+                <option value={WAKE}>Wake target (hold it)</option>
               </select>
             </div>
 
-            {kind === "system_count" ? (
-              <>
-                <div className="field">
-                  <label>System</label>
-                  <select
-                    value={systemId}
-                    onChange={(e) => setSystemId(e.target.value)}
-                  >
-                    {systems.length === 0 ? (
-                      <option value="">No systems yet</option>
-                    ) : (
-                      systems.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-                <div className="field">
-                  <label>Times this week (1 to 21)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={21}
-                    value={systemTarget}
-                    onChange={(e) => setSystemTarget(Number(e.target.value))}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="field">
-                  <label>Days (1 to 7)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={7}
-                    value={wakeDays}
-                    onChange={(e) => setWakeDays(Number(e.target.value))}
-                  />
-                </div>
-                <div className="field">
-                  <label>Tolerance (minutes)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={120}
-                    step={5}
-                    value={toleranceMin}
-                    onChange={(e) => setToleranceMin(Number(e.target.value))}
-                  />
-                </div>
-              </>
-            )}
+            <div className="field">
+              <label>
+                {isWake ? "Days on target this week (1 to 7)" : "Times this week (1 to 21)"}
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={maxTarget}
+                value={target}
+                onChange={(e) =>
+                  setTarget(Math.min(maxTarget, Math.max(1, Number(e.target.value) || 1)))
+                }
+              />
+            </div>
+
+            {isWake ? (
+              <div className="field">
+                <label>Tolerance (minutes around the wake target)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={120}
+                  step={5}
+                  value={toleranceMin}
+                  onChange={(e) => setToleranceMin(Number(e.target.value))}
+                />
+              </div>
+            ) : null}
 
             {error ? (
               <div className="alert alert-error">{error}</div>
@@ -287,11 +276,8 @@ export default function CommitmentsManager({
         <label className="check-row">
           <input
             type="checkbox"
-            checked={exposePartner}
-            onChange={async (e) => {
-              await setExposePartner(e.target.checked);
-              router.refresh();
-            }}
+            checked={expose}
+            onChange={(e) => toggleExpose(e.target.checked)}
           />
           Expose broken commitments to my partner on Telegram
         </label>

@@ -162,3 +162,10 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   one-record rule, commitments in daily DATA with AT RISK detection, Today
   shows a commitments card + 4-week momentum rings per system row, /weekly
   hosts the manager (create/remove/history/exposure toggle).
+- Weekly-page fixes: single commitment picker (all systems + wake hold in one
+  dropdown, target label adapts, tolerance only for wake), exposure toggle is
+  optimistic (instant flip, revert on error).
+- R5 Monthly export: DONE. /api/export?month=YYYY-MM&format=json|md (auth
+  required, own data only): raw JSON (entries, systems, goals, commitments,
+  reviews, month stats, records) or an LLM-ready markdown brief. Download
+  buttons on /monthly. No AI runs to produce exports.
