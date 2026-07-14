@@ -44,7 +44,7 @@ function StatsView({ stats }: { stats: WeeklyStats }) {
               <div className="review-sys-info">
                 <span className="review-sys-name">{s.name}</span>
                 <span className="review-sys-counts muted">
-                  {s.done} done, {s.floor} floor, {s.skip} skip
+                  {s.done} done, {s.floor} min, {s.skip} skip
                 </span>
               </div>
               <span className={`review-badge badge-${s.label}`}>

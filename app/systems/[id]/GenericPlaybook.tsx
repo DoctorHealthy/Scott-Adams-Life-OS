@@ -9,7 +9,7 @@ function metricLabel(m: string) {
 export default function GenericPlaybook({ system }: { system: System }) {
   const rows: { k: string; v: string | null }[] = [
     { k: "Rule", v: system.rule },
-    { k: "Floor", v: system.floor },
+    { k: "Min", v: system.floor },
     { k: "Ceiling", v: system.ceiling },
     { k: "Anchor", v: system.anchor },
     { k: "When", v: system.schedule_block },

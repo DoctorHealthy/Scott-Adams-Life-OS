@@ -21,7 +21,7 @@ export type FriendshipRow = {
 
 const DOT: Record<SystemStatus, { label: string; color: string }> = {
   done: { label: "done", color: "var(--good)" },
-  floor: { label: "floor", color: "var(--warn)" },
+  floor: { label: "min", color: "var(--warn)" },
   skip: { label: "skip", color: "var(--bad)" },
 };
 
@@ -99,7 +99,7 @@ function WeekCard({ person }: { person: WeekPerson }) {
               {s.statuses.map((st, i) => (
                 <span
                   key={i}
-                  title={`${person.days[i]}: ${st ?? "not logged"}`}
+                  title={`${person.days[i]}: ${st ? DOT[st].label : "not logged"}`}
                   style={{
                     flex: 1,
                     height: 10,
@@ -416,7 +416,7 @@ export default function PartnerView({
       {/* Legend */}
       {accepted && friend ? (
         <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-          Green done, amber floor, red skip, empty not logged.
+          Green done, amber min, red skip, empty not logged.
         </p>
       ) : null}
     </div>

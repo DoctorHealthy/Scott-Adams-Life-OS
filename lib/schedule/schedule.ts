@@ -32,16 +32,12 @@ export const QUADRANTS: {
 
 export const DEFAULT_MORNING_BLOCK: string[] = [
   "Morning light within 30 to 60 min of waking",
-  "Ondra warm-up",
+  "Warm-up",
   "90-minute deep or personal block while energy is fresh",
-  "Training session",
-  "Park or reading if time allows",
+  "Training session if planned",
 ];
 
-export const DEFAULT_FIXED_ROCKS: string[] = [
-  "German lesson - Tuesday",
-  "German lesson - Friday",
-];
+export const DEFAULT_FIXED_ROCKS: string[] = [];
 
 export const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
   morningBlock: DEFAULT_MORNING_BLOCK,
@@ -60,10 +56,11 @@ export function readScheduleConfig(
         ? (s.morningBlock as string[])
         : DEFAULT_MORNING_BLOCK,
     slotWhenFree: Array.isArray(s.slotWhenFree) ? (s.slotWhenFree as string[]) : [],
-    fixedRocks:
-      Array.isArray(s.fixedRocks) && s.fixedRocks.length > 0
-        ? (s.fixedRocks as string[])
-        : DEFAULT_FIXED_ROCKS,
+    // A stored array wins even when empty (the user cleared it); only a missing
+    // key falls back to the default.
+    fixedRocks: Array.isArray(s.fixedRocks)
+      ? (s.fixedRocks as string[])
+      : DEFAULT_FIXED_ROCKS,
     eisenhower: Array.isArray(s.eisenhower)
       ? (s.eisenhower as EisenhowerItem[]).filter(
           (i) => i && typeof i.id === "string" && typeof i.text === "string"
@@ -88,4 +85,25 @@ export function quadrantCounts(
     3: itemsInQuadrant(items, 3).length,
     4: itemsInQuadrant(items, 4).length,
   };
+}
+
+// Full and short weekday names, indexed to match Date.getDay() (Sunday = 0).
+const WEEKDAY_NAMES: [full: string, short: string][] = [
+  ["Sunday", "Sun"],
+  ["Monday", "Mon"],
+  ["Tuesday", "Tue"],
+  ["Wednesday", "Wed"],
+  ["Thursday", "Thu"],
+  ["Friday", "Fri"],
+  ["Saturday", "Sat"],
+];
+
+// Fixed rocks whose text names the given weekday (0 = Sunday .. 6 = Saturday),
+// matched case-insensitively against the full name or the short form as whole
+// words. Used to surface today's fixed commitments to the coach.
+export function rocksForWeekday(rocks: string[], weekday: number): string[] {
+  const names = WEEKDAY_NAMES[weekday];
+  if (!names) return [];
+  const re = new RegExp(`\\b(${names[0]}|${names[1]})\\b`, "i");
+  return rocks.filter((r) => re.test(r));
 }

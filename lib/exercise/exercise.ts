@@ -19,18 +19,15 @@ export const DEFAULT_WARMUP: string[] = [
   "Dynamic stretches: leg swings, walking lunges with torso rotation, arm swings.",
   "Scapular activation: band pull-aparts or scap push-ups.",
   "Hip openers: 90/90 transitions, a deep squat hold.",
-  "Finger and forearm prep: open-close the hands, wrist circles, light hangs.",
-  "A set of push-ups to fire up the antagonists.",
+  "One easy set of the first exercise to groove the movement.",
 ];
 
-export const DEFAULT_ANKLE: string[] = [
-  "Calf raises, straight knee: 3 x 15 to 20.",
-  "Calf raises, bent knee (soleus): 3 x 15 to 20.",
-  "Eccentric heel drops off a step: 3 x 10 to 15, slow lower.",
-  "Banded ankle, all four directions: 2 to 3 x 15 each.",
-  "Tibialis raises (toes up against a wall): 3 x 20.",
-  "Single-leg balance: 3 x 30 to 45 s, progress to eyes closed.",
-  "Knee-to-wall ankle mobility: 3 x 10 per side.",
+export const DEFAULT_PREHAB: string[] = [
+  "Calf raises: 3 x 15 to 20.",
+  "Single-leg balance: 3 x 30 to 45 s per side.",
+  "Hip mobility: 90/90 transitions, 2 x 10 per side.",
+  "Ankle mobility: knee-to-wall, 3 x 10 per side.",
+  "Glute activation: banded bridges, 2 x 15.",
 ];
 
 export type ExerciseConfig = {
@@ -44,7 +41,7 @@ export const DEFAULT_EXERCISE_CONFIG: ExerciseConfig = {
   sessionsTarget: 4,
   sessionTypes: DEFAULT_SESSION_TYPES,
   warmup: DEFAULT_WARMUP,
-  ankle: DEFAULT_ANKLE,
+  ankle: DEFAULT_PREHAB,
 };
 
 export type ExerciseLog = {
@@ -78,7 +75,7 @@ export function readExerciseConfig(
     ankle:
       Array.isArray(e.ankle) && e.ankle.length > 0
         ? (e.ankle as string[])
-        : DEFAULT_ANKLE,
+        : DEFAULT_PREHAB,
   };
 }
 

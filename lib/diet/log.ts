@@ -1,4 +1,4 @@
-import { DEFAULT_MEALS } from "./meals";
+import { DEFAULT_MEALS, LEGACY_MEALS } from "./meals";
 
 // What a check-in stores for diet. Primary inputs are running calorie and
 // protein numbers the user bumps directly; meals and snacks just add to them.
@@ -29,7 +29,9 @@ function sumItems(items: unknown[]): { kcal: number; protein: number } {
   let protein = 0;
   for (const el of items) {
     if (typeof el === "string") {
-      const m = DEFAULT_MEALS.find((x) => x.id === el);
+      const m =
+        LEGACY_MEALS.find((x) => x.id === el) ??
+        DEFAULT_MEALS.find((x) => x.id === el);
       if (m) {
         kcal += m.kcal;
         protein += m.protein;

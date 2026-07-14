@@ -197,7 +197,7 @@ ${recentLines || "- none"}
 
 SYSTEMS TODAY (status the user tapped)
 ${systemLines.length ? systemLines.join("\n") : "- no active systems"}
-- Tally: ${counts.done} done, ${counts.floor} floor, ${counts.skip} skip, ${counts.not_logged} not logged
+- Tally: ${counts.done} done, ${counts.floor} min, ${counts.skip} skip, ${counts.not_logged} not logged
 
 DIET TODAY (computed by the app from the meals the user logged)
 ${
@@ -304,7 +304,7 @@ RULES
   slip, a drift, being behind on sessions, protein under). Reference the real
   signals.
 - Mention the sleep step and today's wake target only if it is the lever today.
-  Note if today is a German day when it matters for the plan.
+  Note any fixed commitments today when they matter for the plan.
 - End with ONE clear focus for today, not a list.
 - It must read differently on a different day. Never invent numbers.
 
@@ -313,7 +313,7 @@ Plain text, no markdown symbols, no headers.
 
 type BriefingSignalsLike = {
   name: string;
-  germanDay: boolean;
+  fixedToday: string[];
   yesterday: { logged: boolean; energy: number | null; slipped: string[] };
   energy7: { avg: number | null; direction: string; count: number };
   sleep: {
@@ -354,12 +354,12 @@ export function buildBriefingPrompt(signals: BriefingSignalsLike): string {
 =====  SIGNALS (computed by the app; exact, do not change)  =====
 
 Name: ${s.name}
-Today is a German lesson day: ${s.germanDay ? "yes (Tue/Fri)" : "no"}
+Fixed commitments today: ${s.fixedToday.length ? s.fixedToday.join(", ") : "none"}
 
 YESTERDAY
 - Logged: ${s.yesterday.logged ? "yes" : "no"}
 - Energy: ${s.yesterday.energy ?? "not logged"}
-- Slipped (floor or skip): ${slipped}
+- Slipped (min or skip): ${slipped}
 
 ENERGY TREND
 - Last ${s.energy7.count} logged days average: ${s.energy7.avg != null ? s.energy7.avg.toFixed(1) : "not logged"}
@@ -499,7 +499,7 @@ export function buildWeeklyReviewPrompt(args: {
   const systemLines = s.systems
     .map(
       (x) =>
-        `- ${x.name}: ${x.done} done, ${x.floor} floor, ${x.skip} skip, ${x.notLogged} not logged  [${x.label}]`
+        `- ${x.name}: ${x.done} done, ${x.floor} min, ${x.skip} skip, ${x.notLogged} not logged  [${x.label}]`
     )
     .join("\n");
 
@@ -694,7 +694,7 @@ export function buildMonthlyReviewPrompt(args: {
   const systemLines = s.systems
     .map(
       (x) =>
-        `- ${x.name}: ${x.done} done, ${x.floor} floor, ${x.skip} skip${
+        `- ${x.name}: ${x.done} done, ${x.floor} min, ${x.skip} skip${
           x.ranPct != null ? ` (ran ${x.ranPct}% of logged days)` : ""
         }`
     )

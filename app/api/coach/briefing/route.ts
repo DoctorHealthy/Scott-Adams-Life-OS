@@ -7,6 +7,7 @@ import { computeTargets } from "@/lib/diet/targets";
 import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
 import { readSleepConfig } from "@/lib/sleep/sleep";
 import { readExerciseConfig } from "@/lib/exercise/exercise";
+import { readScheduleConfig } from "@/lib/schedule/schedule";
 import { computeBriefingSignals, type BriefingRecent } from "@/lib/today/briefing";
 import type { System } from "@/lib/types";
 
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
     exerciseConfig: readExerciseConfig(profile?.coaching_prefs),
     proteinTarget: targets.protein,
     recent: (recent as BriefingRecent[]) ?? [],
+    fixedRocks: readScheduleConfig(profile?.coaching_prefs).fixedRocks,
   });
 
   let system: string;

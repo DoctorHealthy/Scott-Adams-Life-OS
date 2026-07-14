@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DOMAINS, METRIC_TYPES } from "@/lib/constants";
+import { DOMAIN_EXAMPLES } from "@/lib/systems/examples";
 import type { MetricType, System } from "@/lib/types";
 import {
   createSystem,
@@ -46,6 +47,9 @@ export default function SystemsManager({
 
   const active = initialSystems.filter((s) => s.active);
   const archived = initialSystems.filter((s) => !s.active);
+
+  // Placeholders track the selected domain live. Hints only, never saved values.
+  const ex = DOMAIN_EXAMPLES[form.domain] ?? DOMAIN_EXAMPLES.Custom;
 
   async function move(index: number, dir: "up" | "down") {
     const ids = active.map((s) => s.id);
@@ -276,6 +280,11 @@ export default function SystemsManager({
 
             {error ? <div className="alert alert-error">{error}</div> : null}
 
+            <p className="muted" style={{ marginTop: 0, fontSize: 12 }}>
+              These fields are your contract. You see them on Today; the coach
+              reads them in every review.
+            </p>
+
             <div className="field">
               <label>Name</label>
               <input
@@ -322,26 +331,36 @@ export default function SystemsManager({
               <input
                 value={form.rule}
                 onChange={(e) => setForm({ ...form, rule: e.target.value })}
-                placeholder="Out of bed at the target wake time, no snooze"
+                placeholder={ex.rule}
               />
+              <span className="muted" style={{ fontSize: 12 }}>
+                The behavior you repeat. The coach holds you to this.
+              </span>
             </div>
 
             <div className="form-row">
               <div className="field">
-                <label>Floor (worst-day version)</label>
+                <label>Min (bad-day version)</label>
                 <input
                   value={form.floor}
                   onChange={(e) => setForm({ ...form, floor: e.target.value })}
-                  placeholder="Up within 30 min of target"
+                  placeholder={ex.floor}
                 />
+                <span className="muted" style={{ fontSize: 12 }}>
+                  The smallest version that still counts on your worst day.
+                  Protects the streak.
+                </span>
               </div>
               <div className="field">
                 <label>Ceiling (full version)</label>
                 <input
                   value={form.ceiling}
                   onChange={(e) => setForm({ ...form, ceiling: e.target.value })}
-                  placeholder="Up on time + sunlight in 30 min"
+                  placeholder={ex.ceiling}
                 />
+                <span className="muted" style={{ fontSize: 12 }}>
+                  The full version when energy is high.
+                </span>
               </div>
             </div>
 
@@ -351,8 +370,12 @@ export default function SystemsManager({
                 <input
                   value={form.anchor}
                   onChange={(e) => setForm({ ...form, anchor: e.target.value })}
-                  placeholder="Alarm goes off"
+                  placeholder={ex.anchor}
                 />
+                <span className="muted" style={{ fontSize: 12 }}>
+                  The existing moment or habit this attaches to. The coach uses
+                  it to place the habit in your day.
+                </span>
               </div>
               <div className="field">
                 <label>When (schedule block)</label>

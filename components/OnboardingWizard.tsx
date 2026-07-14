@@ -174,7 +174,7 @@ export default function OnboardingWizard({ email }: { email: string }) {
               />
             </Field>
             <div className="form-row">
-              <Field label="Floor (worst day, still counts)">
+              <Field label="Min (worst day, still counts)">
                 <textarea
                   rows={2}
                   value={s.floor}

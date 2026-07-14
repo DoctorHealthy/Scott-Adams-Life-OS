@@ -122,3 +122,16 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   set at onboarding and never edited.
 - 2026-07-03: cron reminder fix (middleware whitelisted /api/cron) verified
   working end to end; use a 1-minute cron interval for near-on-time delivery.
+
+## Post-v1 roadmap (R-series)
+- R1 Trust the numbers: DONE. Sleep log stores only real values (labels
+  clarified, no prefill-as-data, woke/bed-on-target quick buttons); personal
+  defaults de-Marked (generic warmup/prehab/meals/morning block, empty fixed
+  rocks, German-day replaced by rocksForWeekday over fixedRocks); LEGACY_MEALS
+  in lib/diet/legacy-meals.json keeps old entries computing; Done/Min/Skip
+  labels (internal values unchanged); system editor help + domain-aware
+  placeholders (lib/systems/examples.ts). Run scripts/preserve-personal-content.mjs
+  once for Mark BEFORE relying on new defaults.
+- R2 Sleep Campaign 2.0 next (two-way Telegram logging, escalating wind-down,
+  auto-advance step, recovery protocol, campaign card). Then R3 flexible
+  tracking (cadence/counters/sub-items), R4 commitments, R5 export.

@@ -17,6 +17,7 @@ import {
 } from "@/lib/exercise/exercise";
 import { sessionForDate } from "@/lib/today/plan";
 import { readDietLog } from "@/lib/diet/log";
+import { rocksForWeekday } from "@/lib/schedule/schedule";
 import type { System } from "@/lib/types";
 
 export type BriefingRecent = {
@@ -29,7 +30,7 @@ export type BriefingRecent = {
 
 export type BriefingSignals = {
   name: string;
-  germanDay: boolean;
+  fixedToday: string[];
   yesterday: { logged: boolean; energy: number | null; slipped: string[] };
   energy7: { avg: number | null; direction: "rising" | "falling" | "flat" | "unknown"; count: number };
   sleep: {
@@ -69,17 +70,26 @@ export function computeBriefingSignals(args: {
   exerciseConfig: ExerciseConfig;
   proteinTarget: number | null;
   recent: BriefingRecent[];
+  fixedRocks: string[];
 }): BriefingSignals {
-  const { date, name, systems, sleepConfig, exerciseConfig, proteinTarget, recent } =
-    args;
+  const {
+    date,
+    name,
+    systems,
+    sleepConfig,
+    exerciseConfig,
+    proteinTarget,
+    recent,
+    fixedRocks,
+  } = args;
 
   const sorted = [...recent].sort((a, b) => (a.date < b.date ? 1 : -1));
   const nameById = new Map(systems.map((s) => [s.id, s.name]));
 
-  // German day: Tue (2) or Fri (5).
+  // Fixed commitments that land on today's weekday.
   const [yy, mm, dd] = date.split("-").map(Number);
   const dow = new Date(yy, mm - 1, dd).getDay();
-  const germanDay = dow === 2 || dow === 5;
+  const fixedToday = rocksForWeekday(fixedRocks, dow);
 
   // Yesterday.
   const yDate = addDays(date, -1);
@@ -140,7 +150,7 @@ export function computeBriefingSignals(args: {
 
   return {
     name,
-    germanDay,
+    fixedToday,
     yesterday: {
       logged: !!yEntry,
       energy: yEntry?.energy_1_10 ?? null,

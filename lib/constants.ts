@@ -20,9 +20,9 @@ export const STATUS_META: Record<
   SystemStatus,
   { label: string; hint: string }
 > = {
-  done: { label: "Done", hint: "Full version, the ceiling" },
-  floor: { label: "Floor", hint: "Bad-day version, still counts" },
-  skip: { label: "Skip", hint: "Did not run it today" },
+  done: { label: "Done", hint: "The full version" },
+  floor: { label: "Min", hint: "The bad-day minimum. Still counts." },
+  skip: { label: "Skip", hint: "Did not run today" },
 };
 
 // Local date as YYYY-MM-DD, using the browser's timezone. Deterministic.

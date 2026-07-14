@@ -28,6 +28,7 @@ import {
 } from "@/lib/goals/goals";
 import { computeEnergyCorrelations } from "@/lib/review/weekly";
 import { computeDailyMisses } from "@/lib/review/misses";
+import { readScheduleConfig, rocksForWeekday } from "@/lib/schedule/schedule";
 import { goalStaleDays, type SnapshotReview } from "@/lib/review/stale";
 import { sessionForDate } from "@/lib/today/plan";
 import { hhmmToMin } from "@/lib/sleep/sleep";
@@ -165,7 +166,10 @@ export async function POST(request: Request) {
 
   const [yy, mm, dd] = date.split("-").map(Number);
   const dow = new Date(yy, mm - 1, dd).getDay();
-  const germanDay = dow === 2 || dow === 5;
+  const fixedToday = rocksForWeekday(
+    readScheduleConfig(profile?.coaching_prefs).fixedRocks,
+    dow
+  );
 
   const yesterday = recentFull.find((r) => r.date < date) ?? null;
 
@@ -209,7 +213,7 @@ export async function POST(request: Request) {
       proteinLogged: dietLog.protein,
       proteinTarget: eff.protein,
     },
-    germanDay,
+    fixedToday,
   });
 
   const correlations = computeEnergyCorrelations({

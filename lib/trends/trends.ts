@@ -274,7 +274,7 @@ export function buildAllSeries(args: {
       unit: "%",
       yMinHint: 0,
       yMaxHint: 100,
-      summary: "7-day rolling adherence (done counts full, floor counts half).",
+      summary: "7-day rolling adherence (done counts full, min counts half).",
     });
   }
 

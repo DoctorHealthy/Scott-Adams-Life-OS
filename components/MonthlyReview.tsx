@@ -182,7 +182,7 @@ export default function MonthlyReview({
                 <Row
                   key={s.id}
                   k={s.name}
-                  v={`${s.done} done, ${s.floor} floor, ${s.skip} skip${
+                  v={`${s.done} done, ${s.floor} min, ${s.skip} skip${
                     s.ranPct != null ? ` (ran ${s.ranPct}%)` : ""
                   }`}
                 />

@@ -21,7 +21,6 @@ import { readDietLog, emptyDietLog, type DietLogValue } from "@/lib/diet/log";
 import {
   readSleepLog,
   emptySleepLog,
-  targetBedtime,
   type SleepConfig,
   type SleepLog,
 } from "@/lib/sleep/sleep";
@@ -111,9 +110,6 @@ export default function TodayClient({
   const [reviewOpen, setReviewOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
 
-  const defaultWake = sleepConfig.currentWake;
-  const defaultBed = targetBedtime(sleepConfig);
-
   // Diet prefill: most recent logged day's calories/protein, or the target as a
   // baseline, so the fields never start at zero.
   const priorDiet = (() => {
@@ -156,12 +152,9 @@ export default function TodayClient({
         exercise?: unknown;
         mind?: unknown;
       };
-      const sl = readSleepLog(ml.sleep);
-      setSleepLog({
-        ...sl,
-        wake: sl.wake ?? defaultWake,
-        bed: sl.bed ?? defaultBed,
-      });
+      // Sleep is stored as logged: no prefilled wake/bed, so a saved day can
+      // never fabricate adherence. Targets show as placeholders in the card.
+      setSleepLog(readSleepLog(ml.sleep));
       setExerciseLog(readExerciseLog(ml.exercise));
       setMindLog(readMindLog(ml.mind));
       setReflection(data?.reflection ?? "");
@@ -171,7 +164,7 @@ export default function TodayClient({
       setSaved(false);
       setLoading(false);
     },
-    [supabase, userId, defaultWake, defaultBed, prefillKcal, prefillProtein]
+    [supabase, userId, prefillKcal, prefillProtein]
   );
 
   useEffect(() => {
@@ -268,6 +261,7 @@ export default function TodayClient({
           exerciseConfig,
           proteinTarget: targets.protein,
           recent,
+          fixedRocks: schedule.fixedRocks,
         })
       )
     : null;
@@ -558,7 +552,7 @@ export default function TodayClient({
                       <p style={{ margin: "0 0 8px", fontSize: 14 }}>{s.rule}</p>
                     ) : null}
                     <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                      Floor: {s.floor ?? "not set"}. Ceiling: {s.ceiling ?? "not set"}.
+                      Min: {s.floor ?? "not set"}. Ceiling: {s.ceiling ?? "not set"}.
                     </p>
                     <RowFoot sys={s} />
                   </>

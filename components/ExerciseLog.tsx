@@ -25,13 +25,13 @@ export default function ExerciseLogCard({
     <div>
       <div className="toggle-list">
         <ToggleRow
-          label="Ondra warm-up done"
-          hint="the daily floor, never zero"
+          label="Warm-up done"
+          hint="the daily min, never zero"
           on={value.warmup}
           onClick={() => onChange({ ...value, warmup: !value.warmup })}
         />
         <ToggleRow
-          label="Ankle prehab done"
+          label="Prehab / mobility done"
           on={value.ankle}
           onClick={() => onChange({ ...value, ankle: !value.ankle })}
         />
@@ -62,7 +62,7 @@ export default function ExerciseLogCard({
       ) : null}
 
       <p className="muted" style={{ fontSize: 13, marginTop: 12, marginBottom: 0 }}>
-        Floor is warm-up plus ankle (plus a walk). Hold it every day, even when
+        Min is warm-up plus prehab (plus a walk). Hold it every day, even when
         you skip the session.
       </p>
     </div>

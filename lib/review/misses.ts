@@ -36,16 +36,16 @@ export function computeDailyMisses(args: {
     proteinLogged: number;
     proteinTarget: number | null;
   };
-  germanDay: boolean;
+  fixedToday: string[];
 }): Miss[] {
-  const { systems, statuses, energyToday, energyYesterday, sleep, exercise, diet, germanDay } =
+  const { systems, statuses, energyToday, energyYesterday, sleep, exercise, diet, fixedToday } =
     args;
   const misses: Miss[] = [];
 
   const energyFacts: string[] = [];
   if (energyToday != null) energyFacts.push(`energy today ${energyToday}`);
   if (energyYesterday != null) energyFacts.push(`energy yesterday ${energyYesterday}`);
-  if (germanDay) energyFacts.push("German lesson day (Tue/Fri)");
+  for (const rock of fixedToday) energyFacts.push(`fixed commitment today: ${rock}`);
 
   // 1. Wake drift past tolerance: the campaign anchor.
   if (sleep.driftMin != null && sleep.driftMin > 30 && sleep.latestWake) {

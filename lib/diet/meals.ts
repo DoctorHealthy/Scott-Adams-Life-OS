@@ -30,126 +30,72 @@ export const SECTIONS: Section[] = [
   "Other",
 ];
 
+// Neutral starter catalog seeded for a new user. After seeding, the catalog is
+// user data (add / edit / remove), stored in coaching_prefs.diet.
 export const DEFAULT_MEALS: DietMeal[] = [
   {
-    id: "chicken-sweetpotato-broccoli",
-    name: "Air-fryer chicken thighs + sweet potato + broccoli",
-    kcal: 700,
-    protein: 50,
-    blurb: "Big, highest-protein meal. Your default Meal 1.",
-    prep: "Chicken and cubed sweet potato in the air fryer. Frozen broccoli steamed. Olive oil, salt, paprika.",
+    id: "chicken-rice-veg",
+    name: "Chicken, rice, vegetables",
+    kcal: 650,
+    protein: 45,
     ingredients: [
-      { item: "Chicken thighs", section: "Protein" },
-      { item: "Sweet potatoes", section: "Carbs" },
-      { item: "Frozen broccoli", section: "Veg & fruit" },
-      { item: "Olive oil", section: "Fats & extras" },
-      { item: "Paprika", section: "Fats & extras" },
-      { item: "Salt", section: "Fats & extras" },
-    ],
-  },
-  {
-    id: "salmon-rice-spinach",
-    name: "Salmon fillet + rice + spinach",
-    kcal: 680,
-    protein: 42,
-    blurb: "Fast, fatty fish, steady energy.",
-    prep: "Air-fryer salmon, microwave rice pouch, wilt spinach in olive oil.",
-    ingredients: [
-      { item: "Salmon fillets", section: "Protein" },
-      { item: "Microwave rice pouches", section: "Carbs" },
-      { item: "Spinach", section: "Veg & fruit" },
+      { item: "Chicken breast", section: "Protein" },
+      { item: "Rice", section: "Carbs" },
+      { item: "Mixed vegetables", section: "Veg & fruit" },
       { item: "Olive oil", section: "Fats & extras" },
     ],
   },
   {
-    id: "mince-stirfry-rice",
-    name: "Beef or turkey mince stir-fry + frozen veg + rice",
-    kcal: 720,
-    protein: 46,
-    blurb: "One pan, 12 minutes.",
-    prep: "Brown the mince, throw in frozen veg, microwave rice. Soy sauce and garlic, no added-sugar sauces.",
-    ingredients: [
-      { item: "Mince (beef or turkey)", section: "Protein" },
-      { item: "Frozen mixed veg", section: "Veg & fruit" },
-      { item: "Microwave rice pouches", section: "Carbs" },
-      { item: "Soy sauce", section: "Fats & extras" },
-      { item: "Garlic", section: "Fats & extras" },
-    ],
-  },
-  {
-    id: "eggs-bread-avocado",
-    name: "4 eggs scrambled + wholegrain bread + avocado + tomato",
-    kcal: 600,
-    protein: 30,
-    blurb: "Your morning anchor, upgraded from the ham sandwich.",
-    prep: "Scramble 4 eggs, toast wholegrain bread, slice avocado and tomato.",
+    id: "omelette-bread",
+    name: "Omelette with bread",
+    kcal: 500,
+    protein: 28,
     ingredients: [
       { item: "Eggs", section: "Protein" },
-      { item: "Wholegrain bread", section: "Carbs" },
-      { item: "Avocado", section: "Veg & fruit" },
-      { item: "Tomatoes", section: "Veg & fruit" },
-      { item: "Olive oil", section: "Fats & extras" },
-      { item: "Salt", section: "Fats & extras" },
+      { item: "Bread", section: "Carbs" },
+      { item: "Butter", section: "Fats & extras" },
     ],
   },
   {
-    id: "yogurt-oats-berries",
-    name: "Lactose-free high-protein yogurt + oats + berries + nuts",
-    kcal: 520,
-    protein: 35,
-    blurb: "Fast, gut-friendly, low sugar if you skip the sweetened kinds.",
-    prep: "Stir oats into a high-protein lactose-free yogurt. Top with berries and nuts.",
+    id: "yogurt-fruit-nuts",
+    name: "Yogurt with fruit and nuts",
+    kcal: 400,
+    protein: 25,
     ingredients: [
-      { item: "Lactose-free high-protein yogurt", section: "Protein" },
-      { item: "Rolled oats", section: "Carbs" },
-      { item: "Berries", section: "Veg & fruit" },
-      { item: "Mixed nuts", section: "Fats & extras" },
+      { item: "Yogurt", section: "Protein" },
+      { item: "Fruit", section: "Veg & fruit" },
+      { item: "Nuts", section: "Fats & extras" },
     ],
   },
   {
-    id: "tuna-potato-salad",
-    name: "Canned tuna + potatoes + big mixed salad + olive oil",
-    kcal: 560,
+    id: "fish-potatoes-salad",
+    name: "Fish with potatoes and salad",
+    kcal: 600,
     protein: 40,
-    blurb: "No cooking beyond boiling or air-frying potatoes.",
-    prep: "Boil or air-fry potato cubes, drain tuna, big salad, olive oil.",
     ingredients: [
-      { item: "Canned tuna", section: "Protein" },
+      { item: "White fish", section: "Protein" },
       { item: "Potatoes", section: "Carbs" },
       { item: "Salad mix", section: "Veg & fruit" },
-      { item: "Tomatoes", section: "Veg & fruit" },
       { item: "Olive oil", section: "Fats & extras" },
     ],
   },
   {
-    id: "sausage-lentils-veg",
-    name: "Low-sugar chicken sausage + lentils + roasted veg",
-    kcal: 620,
-    protein: 42,
-    blurb: "One tray, air fryer plus a pouch of pre-cooked lentils.",
-    prep: "Air-fry chicken sausage and frozen veg on one tray, heat the lentils.",
-    ingredients: [
-      { item: "Low-sugar chicken sausage", section: "Protein" },
-      { item: "Pre-cooked lentils", section: "Carbs" },
-      { item: "Frozen mixed veg", section: "Veg & fruit" },
-      { item: "Olive oil", section: "Fats & extras" },
-    ],
-  },
-  {
-    id: "cottage-fruit-nuts",
-    name: "Lactose-free cottage cheese + fruit + nuts",
-    kcal: 400,
+    id: "protein-shake",
+    name: "Protein shake",
+    kcal: 250,
     protein: 30,
-    blurb: "Fast third meal or a protein top-up.",
-    prep: "Bowl of lactose-free cottage cheese, fruit, a handful of nuts.",
     ingredients: [
-      { item: "Lactose-free cottage cheese", section: "Protein" },
-      { item: "Apples", section: "Veg & fruit" },
-      { item: "Berries", section: "Veg & fruit" },
-      { item: "Mixed nuts", section: "Fats & extras" },
+      { item: "Protein powder", section: "Protein" },
+      { item: "Milk", section: "Other" },
     ],
   },
 ];
+
+// The original personal catalog, kept verbatim in legacy-meals.json so legacy
+// check-ins that stored meal ids still resolve their kcal/protein (see
+// lib/diet/log.ts sumItems). The JSON is shared with scripts/preserve-personal-content.mjs.
+import legacyMeals from "./legacy-meals.json";
+export const LEGACY_MEALS: DietMeal[] = legacyMeals as DietMeal[];
 
 export function mealById(meals: DietMeal[], id: string): DietMeal | undefined {
   return meals.find((m) => m.id === id);
