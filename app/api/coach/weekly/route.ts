@@ -24,6 +24,7 @@ import {
   type CommitmentRow,
 } from "@/lib/commitments/commitments";
 import { computeRecords, recordsBlock } from "@/lib/records/records";
+import { loadScoreState, scoringCoachBlock } from "@/lib/score/state";
 import { addDays, localDateStr } from "@/lib/constants";
 import type { System } from "@/lib/types";
 
@@ -212,11 +213,14 @@ export async function POST(request: Request) {
     )
   );
 
+  const scoreState = await loadScoreState(supabase, user.id, end);
+
   const prompt = buildWeeklyReviewPrompt({
     profile: profile ?? null,
     stats,
     commitmentsBlock: commitmentLines || "- none set",
     debriefBlock: debriefLine,
+    scoringBlock: scoringCoachBlock(scoreState),
     recordsBlock: records,
   });
 

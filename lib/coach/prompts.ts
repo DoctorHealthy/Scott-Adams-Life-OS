@@ -46,6 +46,11 @@ HARD RULES
   call it out and attach the smallest next move.
 - COMMITMENTS: if one is AT RISK, say so plainly and order the exact catch-up
   (what, when). If one already FAILED this week, name it without consolation.
+- ACCOUNTABILITY: the DATA has today's grade, the week projection, the fund, any
+  entertainment lock, and outstanding fines and runs. Code decided these and
+  already applied them. State them as settled facts. Never negotiate, soften,
+  invent, or change an amount. If a lock is active, entertainment is off the
+  table until it clears; say so in one line.
 - THE COOKIE JAR: when the reflection shows weakness or a commitment is at
   risk or failed, throw exactly ONE record from RECORDS back as proof of
   capability. Quote the number as given; never invent a record.
@@ -136,6 +141,7 @@ export function buildDailyReviewPrompt(args: {
   goals: GoalLine[];
   weeklyCounts: Record<string, { count: number; target: number | null }>;
   commitmentsBlock: string;
+  scoringBlock: string;
   recordsBlock: string;
 }): string {
   const {
@@ -154,6 +160,7 @@ export function buildDailyReviewPrompt(args: {
     goals,
     weeklyCounts,
     commitmentsBlock,
+    scoringBlock,
     recordsBlock,
   } = args;
 
@@ -298,6 +305,10 @@ THIS WEEK'S COMMITMENTS (judged by code; AT RISK means the remaining days
 cannot cover the gap at one per day)
 ${commitmentsBlock}
 
+ACCOUNTABILITY (scored by code; consequences already decided, do not negotiate
+or invent amounts)
+${scoringBlock}
+
 RECORDS (the cookie jar; quote at most one, only when the rules say so)
 ${recordsBlock}
 
@@ -425,6 +436,10 @@ HARD RULES
   commitment FAILED, it leads the review: name it, quote the user's own debrief
   back at them if one exists, no consolation, then the exact reversal. If all
   passed, one hard line of respect, no gushing.
+- ACCOUNTABILITY: the DATA gives the week's grade, the fund, any entertainment
+  lock, and outstanding fines and runs. Code decided and applied these. State
+  them as settled facts; never negotiate, soften, or invent an amount. If a lock
+  is active, name it and what clears it.
 - THE COOKIE JAR: when the user's words show weakness or a commitment failed or
   is at risk, throw exactly ONE record from RECORDS back at them as proof of
   what they have already done. Quote the number as given.
@@ -520,9 +535,11 @@ export function buildWeeklyReviewPrompt(args: {
   stats: WeeklyStatsLike;
   commitmentsBlock: string;
   debriefBlock: string;
+  scoringBlock: string;
   recordsBlock: string;
 }): string {
-  const { profile, stats: s, commitmentsBlock, debriefBlock, recordsBlock } = args;
+  const { profile, stats: s, commitmentsBlock, debriefBlock, scoringBlock, recordsBlock } =
+    args;
 
   const p = profile;
   const profileBlock = p
@@ -618,6 +635,10 @@ ${goalLines}
 COMMITMENTS (judged by code; verdicts are final)
 ${commitmentsBlock}
 - ${debriefBlock}
+
+ACCOUNTABILITY (scored by code; consequences already decided, do not negotiate
+or invent amounts)
+${scoringBlock}
 
 RECORDS (the cookie jar; quote at most one, only when the rules say so)
 ${recordsBlock}

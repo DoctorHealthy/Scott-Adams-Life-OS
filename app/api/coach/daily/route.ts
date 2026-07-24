@@ -37,6 +37,7 @@ import {
   type CommitmentRow,
 } from "@/lib/commitments/commitments";
 import { computeRecords, recordsBlock } from "@/lib/records/records";
+import { loadScoreState, scoringCoachBlock } from "@/lib/score/state";
 import { sessionForDate } from "@/lib/today/plan";
 import { hhmmToMin } from "@/lib/sleep/sleep";
 import type { Entry, System, SystemStatus } from "@/lib/types";
@@ -125,6 +126,9 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  // Accountability facts (computed; the coach states them, never negotiates).
+  const scoreState = await loadScoreState(supabase, user.id, date);
 
   let system: string;
   try {
@@ -332,6 +336,7 @@ export async function POST(request: Request) {
         return `- ${c.label}: ${c.status.toUpperCase()}${risk} (${p.count}/${p.target}, ${p.daysLeft} days left)`;
       })
       .join("\n") || "- none this week",
+    scoringBlock: scoringCoachBlock(scoreState),
     recordsBlock: recordsBlock(
       computeRecords(
         ((allEntries ?? []) as {
