@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TopNav from "@/components/TopNav";
-import PartnerView, { type FriendshipRow } from "@/components/PartnerView";
+import PartnerView, {
+  type FriendshipRow,
+  type LedgerSummary,
+} from "@/components/PartnerView";
 import { addDays, localDateStr } from "@/lib/constants";
+import { loadScoreState } from "@/lib/score/state";
 import { readSleepConfig } from "@/lib/sleep/sleep";
 import { readExerciseConfig } from "@/lib/exercise/exercise";
 import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
@@ -168,6 +172,58 @@ export default async function PartnerPage() {
     });
   }
 
+  // ---- accountability ledger summaries (R6, read-only) ----
+  const myScore = await loadScoreState(supabase, user.id, end);
+  const myLedger: LedgerSummary | null = myScore.enabled
+    ? {
+        fundName: myScore.fund.name,
+        fundBalance: myScore.fund.balance,
+        pendingFinesTotal: myScore.pendingFinesTotal,
+        pendingRunsCount: myScore.pendingRuns.length,
+        locked: myScore.lock.locked,
+      }
+    : null;
+
+  let friendLedger: LedgerSummary | null = null;
+  if (friendId) {
+    const { data: fLedger } = await supabase.rpc("partner_ledger", {
+      friend: friendId,
+    });
+    const fRows = (fLedger ?? []) as {
+      date: string;
+      source: string;
+      kind: string;
+      amount_eur: number | null;
+      distance_km: number | null;
+      label: string;
+      status: string;
+    }[];
+    if (fRows.length > 0) {
+      const finesDone = fRows
+        .filter((r) => r.kind === "fine" && r.status === "done")
+        .reduce((a, r) => a + Number(r.amount_eur ?? 0), 0);
+      const payouts = fRows
+        .filter((r) => r.kind === "payout")
+        .reduce((a, r) => a + Number(r.amount_eur ?? 0), 0);
+      const pendingFinesTotal = fRows
+        .filter((r) => r.kind === "fine" && r.status === "pending")
+        .reduce((a, r) => a + Number(r.amount_eur ?? 0), 0);
+      const pendingRunsCount = fRows.filter(
+        (r) => r.kind === "run" && r.status === "pending"
+      ).length;
+      // Rows are newest-first: the first non-waived lock is the governing one.
+      const latestLock = fRows.find(
+        (r) => r.kind === "lock" && r.status !== "waived"
+      );
+      friendLedger = {
+        fundBalance: Math.round((finesDone - payouts) * 100) / 100,
+        pendingFinesTotal: Math.round(pendingFinesTotal * 100) / 100,
+        pendingRunsCount,
+        locked: latestLock ? latestLock.status === "pending" : false,
+      };
+    }
+  }
+
   return (
     <div className="shell">
       <TopNav email={user.email} />
@@ -191,6 +247,8 @@ export default async function PartnerPage() {
             hiddenSystems={readHiddenSystems(profile?.coaching_prefs)}
             myGoals={myGoals.map((g) => ({ id: g.id, title: g.title }))}
             hiddenGoals={readHiddenGoals(profile?.coaching_prefs)}
+            myLedger={myLedger}
+            friendLedger={friendLedger}
           />
         </div>
       </main>

@@ -9,6 +9,7 @@ import { readExerciseConfig } from "@/lib/exercise/exercise";
 import { readScheduleConfig } from "@/lib/schedule/schedule";
 import { goalFromRow, type GoalRow } from "@/lib/goals/goals";
 import { readReviewConfig } from "@/lib/review/config";
+import { loadScoreState } from "@/lib/score/state";
 import { localDateStr } from "@/lib/constants";
 import {
   commitmentProgress,
@@ -97,6 +98,19 @@ export default async function TodayPage() {
     };
   });
 
+  // Accountability day-score (R6). Code computes everything here; the chip and
+  // locked banner only display these numbers, never recompute them.
+  const scoreState = await loadScoreState(supabase, user.id, today);
+  const scoreChip = scoreState.enabled
+    ? {
+        points: scoreState.todayScore.points,
+        max: scoreState.todayScore.max,
+        grade: scoreState.todayGrade,
+        locked: scoreState.lock.locked,
+        lockRule: scoreState.lock.rule,
+      }
+    : null;
+
   return (
     <div className="shell">
       <TopNav email={user.email} />
@@ -116,6 +130,7 @@ export default async function TodayPage() {
           )}
           reviewWeeklyDay={readReviewConfig(profile?.coaching_prefs).weeklyDay}
           commitments={commitments}
+          scoreChip={scoreChip}
         />
       </main>
     </div>

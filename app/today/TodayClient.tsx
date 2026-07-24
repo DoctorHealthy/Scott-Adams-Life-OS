@@ -42,6 +42,7 @@ import { computeBriefingSignals } from "@/lib/today/briefing";
 import { deriveFocusLine } from "@/lib/today/focus";
 import { gemForDate } from "@/lib/mind/gems";
 import Nudges from "@/components/Nudges";
+import { ScoreChip, LockedBanner, type ScoreChipData } from "@/components/ScoreChip";
 import {
   computeGoalProgressInputs,
   currentQuarter,
@@ -120,6 +121,7 @@ export default function TodayClient({
   goals,
   reviewWeeklyDay,
   commitments,
+  scoreChip,
 }: {
   userId: string;
   systems: System[];
@@ -133,6 +135,7 @@ export default function TodayClient({
   goals: Goal[];
   reviewWeeklyDay: number;
   commitments: TodayCommitment[];
+  scoreChip?: ScoreChipData | null;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -456,12 +459,20 @@ export default function TodayClient({
 
   return (
     <div className="today-calm">
+      {/* Entertainment lock warning: first thing on the page when active. */}
+      {scoreChip?.locked ? <LockedBanner rule={scoreChip.lockRule} /> : null}
+
       {/* Header */}
       <div className="card">
         <div className="dayhead">
           <div>
             {tag ? <div className="eyebrow">{tag}</div> : null}
             <h1 style={{ marginTop: tag ? 4 : 0 }}>{prettyDate(date)}</h1>
+            {scoreChip ? (
+              <div style={{ marginTop: 8 }}>
+                <ScoreChip {...scoreChip} />
+              </div>
+            ) : null}
           </div>
           <div className="date-nav">
             <button

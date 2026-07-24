@@ -11,12 +11,21 @@ import {
 } from "@/app/partner/actions";
 import type { WeekPerson } from "@/lib/partner/partner";
 import type { SystemStatus } from "@/lib/types";
+import { eur } from "@/lib/score/config";
 
 export type FriendshipRow = {
   id: string;
   user_id: string;
   friend_id: string;
   status: "pending" | "accepted" | "blocked";
+};
+
+export type LedgerSummary = {
+  fundName?: string;
+  fundBalance: number;
+  pendingFinesTotal: number;
+  pendingRunsCount: number;
+  locked: boolean;
 };
 
 const DOT: Record<SystemStatus, { label: string; color: string }> = {
@@ -182,6 +191,24 @@ function WeekCard({ person }: { person: WeekPerson }) {
   );
 }
 
+function LedgerLine({ title, data }: { title: string; data: LedgerSummary }) {
+  return (
+    <div className="card" style={{ flex: 1, minWidth: 280 }}>
+      <div className="block-title">{title}</div>
+      <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
+        {`${eur(data.fundBalance)} in the fund - ${eur(
+          data.pendingFinesTotal
+        )} fines pending - ${data.pendingRunsCount} runs pending`}
+      </p>
+      {data.locked ? (
+        <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: "var(--bad)" }}>
+          Entertainment locked
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function PartnerView({
   userId,
   friendships,
@@ -191,6 +218,8 @@ export default function PartnerView({
   hiddenSystems,
   myGoals,
   hiddenGoals,
+  myLedger,
+  friendLedger,
 }: {
   userId: string;
   friendships: FriendshipRow[];
@@ -200,6 +229,8 @@ export default function PartnerView({
   hiddenSystems: string[];
   myGoals: { id: string; title: string }[];
   hiddenGoals: string[];
+  myLedger?: LedgerSummary | null;
+  friendLedger?: LedgerSummary | null;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -336,6 +367,18 @@ export default function PartnerView({
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
           <WeekCard person={me} />
           <WeekCard person={friend} />
+        </div>
+      ) : null}
+
+      {/* Accountability ledger */}
+      {myLedger || friendLedger ? (
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+          {myLedger ? (
+            <LedgerLine title="Your accountability" data={myLedger} />
+          ) : null}
+          {friendLedger ? (
+            <LedgerLine title="Partner accountability" data={friendLedger} />
+          ) : null}
         </div>
       ) : null}
 

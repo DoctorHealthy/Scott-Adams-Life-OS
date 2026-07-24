@@ -4,9 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import TopNav from "@/components/TopNav";
 import WeeklyReview from "@/components/WeeklyReview";
 import CommitmentsManager from "@/components/CommitmentsManager";
+import ScoreCard from "@/components/ScoreCard";
 import { localDateStr } from "@/lib/constants";
 import { readReviewConfig } from "@/lib/review/config";
 import { readSleepConfig } from "@/lib/sleep/sleep";
+import { loadScoreState } from "@/lib/score/state";
 import {
   commitmentProgress,
   weekStartOf,
@@ -46,6 +48,7 @@ export default async function WeeklyPage() {
     { data: commitmentRows },
     { data: systemRows },
     { data: entryRows },
+    scoreState,
   ] = await Promise.all([
     supabase.from("users").select("coaching_prefs").eq("id", user.id).single(),
     supabase
@@ -74,6 +77,7 @@ export default async function WeeklyPage() {
       .lte("date", today)
       .order("date", { ascending: false })
       .limit(21),
+    loadScoreState(supabase, user.id, today),
   ]);
 
   const rows = (reviews as ReviewRow[]) ?? [];
@@ -133,6 +137,12 @@ export default async function WeeklyPage() {
               for next week. All numbers computed from your logs.
             </p>
           </div>
+
+          <ScoreCard
+            state={scoreState}
+            systems={systems.map((s) => ({ id: s.id, name: s.name }))}
+            today={today}
+          />
 
           <CommitmentsManager
             currentWeek={currentItems}
