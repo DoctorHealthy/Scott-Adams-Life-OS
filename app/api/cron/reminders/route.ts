@@ -30,8 +30,30 @@ import { deliver, type DeliveryTargets } from "@/lib/reminders/deliver";
 import {
   commitmentProgress,
   judgeCommitment,
+  weekStartOf,
+  weekEndOf,
   type CommitmentRow,
 } from "@/lib/commitments/commitments";
+import {
+  readScoreConfig,
+  exceptionKindOn,
+  eur,
+  type ScoreConfig,
+} from "@/lib/score/config";
+import {
+  dayScore,
+  dayGrade,
+  isGreenDay,
+  weekScore,
+  consequencesForDay,
+  consequencesForWeek,
+  escalateFine,
+  escalateRun,
+  type Consequence,
+  type DayScore,
+  type WeekScore,
+  type ScoredSystemLike,
+} from "@/lib/score/score";
 
 export const maxDuration = 60;
 
@@ -46,11 +68,75 @@ type SystemRow = {
   id: string;
   user_id: string;
   name: string;
+  domain: string | null;
   cadence: "daily" | "weekly";
   metric_type: string;
   target_per_week: number | null;
   unit: string | null;
 };
+
+type LedgerRow = {
+  id: string;
+  user_id: string;
+  date: string;
+  source: string;
+  kind: string;
+  amount_eur: number | null;
+  distance_km: number | null;
+  label: string;
+  status: string;
+  release_rule: string | null;
+  resolved_on: string | null;
+};
+
+// ---- scoring Telegram text (kept here; the engine stays UI/channel-free) ----
+function scoreFineRunParts(cons: Consequence[], fundName: string): string[] {
+  const parts: string[] = [];
+  for (const c of cons) {
+    if (c.kind === "fine") parts.push(`${eur(c.amountEur)} to the ${fundName}`);
+    else if (c.kind === "run")
+      parts.push(
+        c.waived ? `${c.distanceKm} km run waived (bad-body day)` : `${c.distanceKm} km run`
+      );
+    else if (c.kind === "reward") parts.push("reward earned");
+  }
+  return parts;
+}
+
+function dailyOwnerText(
+  date: string,
+  ds: DayScore,
+  grade: string,
+  cons: Consequence[],
+  config: ScoreConfig
+): string {
+  if (grade === "Perfect") {
+    return `${date}: ${ds.points}/${ds.max}, Perfect. Clean day, no penalty.`;
+  }
+  const parts = scoreFineRunParts(cons, config.fund.name);
+  const lock = cons.find((c) => c.kind === "lock");
+  let msg = `${date}: ${ds.points}/${ds.max}, ${grade}.`;
+  if (parts.length) msg += ` Auto: ${parts.join(", ")}.`;
+  if (lock) msg += ` ${lock.label}`;
+  msg += " Decided. Mark it done in the app, or reply PAID for fines.";
+  return msg;
+}
+
+function weeklyOwnerText(
+  wkMon: string,
+  ws: WeekScore,
+  cons: Consequence[],
+  config: ScoreConfig
+): string {
+  const parts = scoreFineRunParts(cons, config.fund.name);
+  const lock = cons.find((c) => c.kind === "lock");
+  let msg = `Week of ${wkMon}: ${ws.points}/${ws.max}, grade ${ws.grade}.`;
+  if (ws.criticalDays > 0)
+    msg += ` ${ws.criticalDays} zero-day${ws.criticalDays > 1 ? "s" : ""} pulled it down.`;
+  if (parts.length) msg += ` Auto: ${parts.join(", ")}.`;
+  if (lock) msg += ` ${lock.label}`;
+  return msg;
+}
 
 // Hit by cron-job.org every minute or few. Single Telegram consumer: processes
 // the bot inbox (link codes, UP wake replies) with an acknowledged cursor,
@@ -200,9 +286,38 @@ export async function GET(request: Request) {
         continue;
       }
 
+      // 2b) "PAID": settle all outstanding fines (the money enters the fund).
+      if (/^paid[.! ]*$/i.test(text)) {
+        const uid = userByChat.get(chatId);
+        if (!uid) continue;
+        const { data: pend } = await admin
+          .from("ledger")
+          .select("id, amount_eur")
+          .eq("user_id", uid)
+          .eq("kind", "fine")
+          .eq("status", "pending");
+        const ids = (pend ?? []).map((r) => r.id as string);
+        if (ids.length === 0) {
+          await sendTelegram(chatId, "No fines outstanding.");
+        } else {
+          const total = (pend ?? []).reduce((a, r) => a + Number(r.amount_eur ?? 0), 0);
+          const paidOn = localNowIn(tzOf(uid), now).date;
+          await admin
+            .from("ledger")
+            .update({ status: "done", resolved_on: paidOn })
+            .in("id", ids);
+          await sendTelegram(
+            chatId,
+            `Marked ${ids.length} fine${ids.length > 1 ? "s" : ""} paid, ${eur(total)} into the fund.`
+          );
+        }
+        inboxHandled++;
+        continue;
+      }
+
       // 3) Anything else from a linked chat: one-line help.
       if (userByChat.has(chatId)) {
-        await sendTelegram(chatId, "Reply UP when you wake and I log it. Everything else lives in the app.");
+        await sendTelegram(chatId, "Reply UP when you wake and I log it, PAID to settle fines. Everything else lives in the app.");
         inboxHandled++;
       }
     }
@@ -232,7 +347,7 @@ export async function GET(request: Request) {
     admin.from("reminders").select("*").in("user_id", userIds).eq("enabled", true),
     admin
       .from("systems")
-      .select("id, user_id, name, cadence, metric_type, target_per_week, unit")
+      .select("id, user_id, name, domain, cadence, metric_type, target_per_week, unit")
       .in("user_id", userIds),
     admin.from("goals").select("id, user_id, title").in("user_id", userIds),
     admin
@@ -486,6 +601,262 @@ export async function GET(request: Request) {
     }
   }
 
+  // ---- accountability scoring judgment (R6) ----
+  // Code decides the grade and consequences at each user's personal cutoff,
+  // then the ledger records them and the phones hear about it. Exactly-once via
+  // reminder_sends keys 'score:day:<date>' / 'score:week:<monday>' with sent_on
+  // set to the JUDGED date, so re-runs on any later day never re-judge.
+  const { data: ledgerRows } = await admin
+    .from("ledger")
+    .select(
+      "id, user_id, date, source, kind, amount_eur, distance_km, label, status, release_rule, resolved_on"
+    )
+    .in("user_id", userIds)
+    .order("date", { ascending: false });
+  const ledgerByUser = new Map<string, LedgerRow[]>();
+  for (const r of (ledgerRows ?? []) as LedgerRow[]) {
+    const list = ledgerByUser.get(r.user_id) ?? [];
+    list.push(r);
+    ledgerByUser.set(r.user_id, list);
+  }
+
+  let scored = 0;
+  for (const uid of userIds) {
+    const u = userById.get(uid);
+    const local = localByUser.get(uid);
+    if (!u || !local) continue;
+    const prefs = (u.coaching_prefs ?? {}) as Record<string, unknown>;
+    const config = readScoreConfig(prefs);
+    if (!config.enabled || config.systemIds.length === 0) continue;
+    if (local.minutes < config.cutoffHour * 60) continue; // before the day's cutoff
+
+    const sleepConfig = readSleepConfig(prefs);
+    const sysList = systemsByUser.get(uid) ?? [];
+    const scoredSystems: ScoredSystemLike[] = config.systemIds
+      .map((id) => sysList.find((s) => s.id === id))
+      .filter((s): s is SystemRow => !!s)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        domain: s.domain,
+        metric_type: s.metric_type,
+        cadence: s.cadence,
+      }));
+    if (scoredSystems.length === 0) continue;
+
+    const own = (entriesByUser.get(uid) ?? []) as EntryRow[];
+    const entryByDate = new Map(own.map((e) => [e.date, e]));
+    const scoreFor = (date: string): DayScore =>
+      dayScore({ date, entry: entryByDate.get(date), systems: scoredSystems, sleepConfig, config });
+
+    const myLedger = ledgerByUser.get(uid) ?? [];
+    const ownerChat = chatByUser.get(uid) ?? null;
+    const partnerId = partnerOf(uid);
+    const partnerChat = partnerId ? chatByUser.get(partnerId) ?? null : null;
+    const ownerName = (u.name as string | null) ?? "Your partner";
+
+    // The most recent strong (A/S) week resets escalation streaks.
+    const { data: resetRows } = await admin
+      .from("reminder_sends")
+      .select("sent_on")
+      .eq("user_id", uid)
+      .eq("key", "score:reset")
+      .order("sent_on", { ascending: false })
+      .limit(1);
+    const lastReset: string | null = (resetRows?.[0]?.sent_on as string) ?? null;
+
+    const priorMagnitudes = (kind: "fine" | "run", source: string): number[] =>
+      myLedger
+        .filter(
+          (r) => r.kind === kind && r.source === source && (!lastReset || r.date > lastReset)
+        )
+        .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+        .map((r) =>
+          kind === "fine" ? Number(r.amount_eur ?? 0) : Number(r.distance_km ?? 0)
+        );
+
+    const toRows = (cons: Consequence[], judgedDate: string, source: "day" | "week") => {
+      const rows: Record<string, unknown>[] = [];
+      for (const c of cons) {
+        if (c.kind === "fine") {
+          const amount = escalateFine(c.amountEur, priorMagnitudes("fine", source), config);
+          const up = amount !== c.amountEur;
+          rows.push({
+            user_id: uid,
+            date: judgedDate,
+            source,
+            kind: "fine",
+            amount_eur: amount,
+            label: up ? `${c.label} Escalated to ${eur(amount)}.` : c.label,
+            status: "pending",
+          });
+        } else if (c.kind === "run") {
+          const km = escalateRun(c.distanceKm, priorMagnitudes("run", source), config);
+          const up = km !== c.distanceKm;
+          rows.push({
+            user_id: uid,
+            date: judgedDate,
+            source,
+            kind: "run",
+            distance_km: km,
+            label: c.waived ? c.label : up ? `${km} km run (escalated).` : c.label,
+            status: c.waived ? "waived" : "pending",
+          });
+        } else if (c.kind === "lock") {
+          rows.push({
+            user_id: uid,
+            date: judgedDate,
+            source,
+            kind: "lock",
+            label: c.label,
+            status: "pending",
+            release_rule: c.releaseRule,
+          });
+        } else if (c.kind === "reward") {
+          rows.push({
+            user_id: uid,
+            date: judgedDate,
+            source,
+            kind: "reward",
+            label: c.label,
+            status: "done",
+          });
+        }
+      }
+      return rows;
+    };
+
+    // Consecutive green days ending at a date (skipping excused days, which
+    // never break a streak). Used to release entertainment locks.
+    const trailingGreenDates = (endDate: string): string[] => {
+      const out: string[] = [];
+      for (let i = 0; i < 21; i++) {
+        const d = addDays(endDate, -i);
+        if (config.startDate && d < config.startDate) break;
+        const s = scoreFor(d);
+        if (s.excused) continue;
+        if (isGreenDay(s.points, s.max)) out.push(d);
+        else break;
+      }
+      return out;
+    };
+
+    const releaseLocks = async (asOf: string) => {
+      const greens = trailingGreenDates(asOf);
+      for (const l of myLedger) {
+        if (l.kind !== "lock" || l.status !== "pending") continue;
+        const need = l.release_rule === "green3" ? 3 : 1;
+        if (greens.length >= need && greens[need - 1] > l.date) {
+          await admin
+            .from("ledger")
+            .update({ status: "done", resolved_on: asOf })
+            .eq("id", l.id);
+          l.status = "done";
+        }
+      }
+    };
+
+    // ----- daily: judge the day that just ended at the cutoff -----
+    const dayToJudge = addDays(local.date, -1);
+    if (!config.startDate || dayToJudge >= config.startDate) {
+      const key = `score:day:${dayToJudge}`;
+      const { error: dupe } = await admin
+        .from("reminder_sends")
+        .insert({ user_id: uid, key, sent_on: dayToJudge });
+      if (!dupe) {
+        const ds = scoreFor(dayToJudge);
+        const grade = dayGrade(ds.points, ds.max);
+        const exKind = exceptionKindOn(config, dayToJudge);
+
+        if (exKind === "excused") {
+          if (ownerChat)
+            await sendTelegram(
+              ownerChat,
+              `${dayToJudge}: excused. No penalty, dropped from the week.`
+            );
+        } else {
+          const cons = consequencesForDay(grade, config, exKind === "bad_body");
+          const rows = toRows(cons, dayToJudge, "day");
+          if (rows.length > 0) {
+            await admin.from("ledger").insert(rows);
+            for (const r of rows) myLedger.push(r as unknown as LedgerRow);
+          }
+          if (isGreenDay(ds.points, ds.max)) await releaseLocks(dayToJudge);
+
+          if (ownerChat)
+            await sendTelegram(ownerChat, dailyOwnerText(dayToJudge, ds, grade, cons, config));
+
+          if (config.notifyPartner && partnerChat) {
+            const owed = cons.reduce((a, c) => (c.kind === "fine" ? a + c.amountEur : a), 0);
+            const runs = cons.filter(
+              (c): c is Extract<Consequence, { kind: "run" }> => c.kind === "run" && !c.waived
+            );
+            const hasLock = cons.some((c) => c.kind === "lock");
+            if (owed > 0 || runs.length > 0 || hasLock) {
+              await sendTelegram(
+                partnerChat,
+                `${ownerName} yesterday: ${ds.points}/${ds.max} ${grade}.` +
+                  (owed > 0 ? ` ${eur(owed)} to pay.` : "") +
+                  (runs.length > 0
+                    ? ` ${runs.map((r) => `${r.distanceKm} km`).join(" + ")} to run.`
+                    : "") +
+                  (hasLock ? " Entertainment locked." : "") +
+                  " You verify."
+              );
+            }
+          }
+        }
+        scored++;
+      }
+    }
+
+    // ----- weekly: judge the most recent completed week (any day past cutoff) -----
+    const wkMon = addDays(weekStartOf(local.date), -7);
+    const wkSun = weekEndOf(wkMon);
+    if (!config.startDate || wkSun >= config.startDate) {
+      const key = `score:week:${wkMon}`;
+      const { error: dupe } = await admin
+        .from("reminder_sends")
+        .insert({ user_id: uid, key, sent_on: wkMon });
+      if (!dupe) {
+        const from = config.startDate && config.startDate > wkMon ? config.startDate : wkMon;
+        const days: DayScore[] = [];
+        for (let d = wkMon; d <= wkSun; d = addDays(d, 1)) {
+          if (d >= from) days.push(scoreFor(d));
+        }
+        const ws = weekScore(wkMon, days);
+        if (ws.grade === "A" || ws.grade === "S") {
+          await admin
+            .from("reminder_sends")
+            .insert({ user_id: uid, key: "score:reset", sent_on: wkMon });
+        }
+        const cons = consequencesForWeek(ws.grade, config);
+        const rows = toRows(cons, wkMon, "week");
+        // A weekly lock must clear on a green day in the FOLLOWING week, so date
+        // it at the judged week's end; releases then count only later greens.
+        for (const r of rows) if (r.kind === "lock") r.date = wkSun;
+        if (rows.length > 0) await admin.from("ledger").insert(rows);
+
+        if (ownerChat) await sendTelegram(ownerChat, weeklyOwnerText(wkMon, ws, cons, config));
+        if (config.notifyPartner && partnerChat) {
+          const owed = cons.reduce((a, c) => (c.kind === "fine" ? a + c.amountEur : a), 0);
+          const hasRun = cons.some((c) => c.kind === "run");
+          const hasLock = cons.some((c) => c.kind === "lock");
+          if (owed > 0 || hasRun || hasLock) {
+            await sendTelegram(
+              partnerChat,
+              `${ownerName} last week: ${ws.points}/${ws.max}, grade ${ws.grade}.` +
+                (owed > 0 ? ` ${eur(owed)} to pay.` : "") +
+                (hasLock ? " Entertainment locked." : "") +
+                " You verify."
+            );
+          }
+        }
+        scored++;
+      }
+    }
+  }
+
   // Housekeeping.
   if (goneSubIds.length > 0) {
     await admin.from("push_subscriptions").delete().in("id", goneSubIds);
@@ -498,5 +869,5 @@ export async function GET(request: Request) {
     .delete()
     .lt("created_at", new Date(Date.now() - 3600_000).toISOString());
 
-  return NextResponse.json({ checked, sent, inboxHandled, judged });
+  return NextResponse.json({ checked, sent, inboxHandled, judged, scored });
 }
