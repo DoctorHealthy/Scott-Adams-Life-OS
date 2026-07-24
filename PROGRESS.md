@@ -173,5 +173,52 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   submit), weekly target can no longer save as null (weekly defaults to 3;
   display no longer masks null), days-left chip says "ends Sun", form-row grid
   children clamped so time inputs stay inside cards on mobile.
-- NEXT SESSION: R6 accountability scoring engine. Read ACCOUNTABILITY-PLAN.md
-  (reviewed adaptation of Marks Accountability System v2.0 doc).
+- R6 Accountability scoring: DONE. Requires running
+  supabase/migrations/0011_scoring.sql once (ledger table + partner_ledger RPC).
+  Built with the orchestrator split (foundation/cron/coach by the orchestrator,
+  the three UI packages by parallel Opus workers). Confirmed with Mark, changing
+  his v2.0 doc: (1) a system's Min counts as a full point (Done-or-Min = 1,
+  Skip/no-log = 0); (2) running STAYS a punishment (per his doc), with a declared
+  bad-body day waiving that day's run only (the fine still applies); (3) the
+  Gear/Trip Fund is a renamable goal with an optional target and a progress bar.
+  Also live: personal cutoff (default 03:00, not midnight); fines and runs are
+  ledger obligations he marks paid/done (the app cannot move money or block
+  apps); the entertainment lock is a declared state the app reports.
+  - Engine (lib/score/score.ts, pure): dayScore (Sleep via bed<=target AND
+    duration>=hours with tolerance; others Done-or-Min, or counter>=1), dayGrade
+    (proportional bands, exact doc at max 4), weekScore + weekGrade (integer
+    thresholds scaled from the 28-point doc, plus critical-day demotion),
+    consequencesForDay/Week (fine/run/lock/reward, runs kept), escalateFine/Run
+    (3 identical in a row steps up; an A/S week resets), computeLock (live from
+    ledger + green days; green3 for an F week), fund balance/contributed/pct.
+  - Config in coaching_prefs.scoring (lib/score/config.ts): enabled, startDate,
+    systemIds, cutoffHour, sleepToleranceMin, dailyFine, weeklyFines,
+    runsEnabled, runsWaiverAllowed, dailyRunKm, weeklyRunKm, escalation,
+    notifyPartner, fund{name,targetEur}, rewardCatalog, exceptions[{date,reason,
+    kind:excused|bad_body}].
+  - Ledger (migration 0011): fine/run/lock/reward/payout rows, status
+    pending|done|waived, RLS own-all, sanitized partner_ledger(friend) RPC.
+    Grades are computed, never stored; reminder_sends keys 'score:day:<date>' /
+    'score:week:<monday>' (sent_on = the judged date) make judgment exactly-once.
+  - Cron (app/api/cron/reminders): per user past cutoff, judge yesterday and the
+    last complete week, insert ledger rows, release locks on green days, Telegram
+    the owner and (when notifyPartner) the partner verifier. Reply PAID settles
+    all pending fines. Weekly lock rows are dated at the week end so they clear
+    only on a green day in the following week.
+  - UI: Today shows a day-score chip (links to /weekly) + a red LOCKED banner;
+    /weekly hosts the Score card (day-grade strip, week points + projection, fund
+    progress bar with rename/target/log-payout, pending fines/runs with
+    Paid/Waive, declare-exception, full settings, enable/disable); /partner shows
+    both people's ledger summary (fund, pending, lock) via the RPC. Coach
+    daily+weekly DATA carries grade/lock/fund/pending; the coach states
+    consequences as already decided, never negotiates or invents amounts.
+  - Mark's setup: run 0011 once in the Supabase SQL editor. On /weekly open the
+    Score card, tick the scored systems (Sleep, Exercise, German, Reading),
+    Enable. Set the fund name + target. To score Sleep you must log BOTH bed and
+    wake (the doc's rule; wake logs via Telegram UP). Cron already runs; verdicts
+    land after your 03:00 cutoff. Test: log a day, pass the cutoff (or hit the
+    cron URL), confirm the ledger row on /weekly and the Telegram verdict.
+  - Deferred: Sleep has no "Min" floor yet (needs both bed+wake); weekend-lock
+    escalation for repeated failed weeks is not special-cased (fine/run
+    escalation covers the spirit). Revisit if Mark wants them.
+- NEXT SESSION: R6 shipped. No R7 planned yet; next is whatever Mark raises.

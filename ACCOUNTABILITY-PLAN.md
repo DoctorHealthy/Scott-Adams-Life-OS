@@ -5,6 +5,21 @@ reviewed, adapted implementation plan. Build in a fresh Claude Code session:
 read PROGRESS.md + CLAUDE.md + this file first. Use the established
 Fable-orchestrator / Opus-worker split; all numbers in code, AI only narrates.
 
+## STATUS: BUILT (2026-07-24, R6). Decisions Mark confirmed, which override the doc:
+- Correction 1 KEPT: a system's Min counts as a full point (Done-or-Min = 1,
+  Skip/no-log = 0). The floor doctrine wins over "no partial completion".
+- Correction 2 REVERSED by Mark: running STAYS a punishment (his doc's
+  distances: daily 3/5/8 km at 2/1/0, weekly 5/10 km at C/F, escalating). The
+  only softening: a declared "bad-body day" waives that day's run only; the fine
+  still applies (runsWaiverAllowed, default on).
+- Corrections 3 (personal cutoff, default 03:00) and 4 (fines/runs are ledger
+  obligations, lock is a declared state; the app never moves money or blocks
+  apps) implemented as written.
+- NEW (Mark's ask): the Gear/Trip Fund is a renamable goal with an optional
+  target amount; it renders as a progress bar (balance / target) and he logs a
+  payout when he spends it. Fine money fills it (opportunity-cost by design).
+See PROGRESS.md (R6 entry) for the full build map and setup steps.
+
 ## Verdict on the doc
 
 Strong: pre-decided consequences, binary judgment, partner verification,
