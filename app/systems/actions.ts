@@ -31,11 +31,14 @@ function sanitizeCadence(c: unknown): "daily" | "weekly" {
   return c === "weekly" ? "weekly" : "daily";
 }
 
-// null, or a whole number clamped to 1..21.
-function sanitizeTargetPerWeek(n: unknown): number | null {
-  if (n === null || n === undefined || n === "") return null;
+// null, or a whole number clamped to 1..21. A weekly system must always have
+// a target: an empty/invalid value defaults to 3 rather than saving null
+// (which would render as "1/? this week" everywhere).
+function sanitizeTargetPerWeek(n: unknown, cadence: "daily" | "weekly"): number | null {
+  const fallback = cadence === "weekly" ? 3 : null;
+  if (n === null || n === undefined || n === "") return fallback;
   const v = Math.round(Number(n));
-  if (!Number.isFinite(v)) return null;
+  if (!Number.isFinite(v)) return fallback;
   return Math.min(21, Math.max(1, v));
 }
 
@@ -71,7 +74,7 @@ export async function createSystem(input: SystemInput): Promise<ActionResult> {
     schedule_block: emptyToNull(input.schedule_block),
     active: input.active,
     cadence: sanitizeCadence(input.cadence),
-    target_per_week: sanitizeTargetPerWeek(input.target_per_week),
+    target_per_week: sanitizeTargetPerWeek(input.target_per_week, sanitizeCadence(input.cadence)),
     unit: emptyToNull(input.unit ?? ""),
     sort_order: count ?? 0,
   });
@@ -104,7 +107,7 @@ export async function updateSystem(
       schedule_block: emptyToNull(input.schedule_block),
       active: input.active,
       cadence: sanitizeCadence(input.cadence),
-      target_per_week: sanitizeTargetPerWeek(input.target_per_week),
+      target_per_week: sanitizeTargetPerWeek(input.target_per_week, sanitizeCadence(input.cadence)),
       unit: emptyToNull(input.unit ?? ""),
     })
     .eq("id", id)

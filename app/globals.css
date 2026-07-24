@@ -550,6 +550,17 @@ button:disabled {
   gap: 12px;
 }
 
+/* Grid children default to min-width auto, which lets intrinsically wide
+   controls (time inputs on iOS) blow out of the card. Clamp them. */
+.form-row > .field {
+  min-width: 0;
+}
+.form-row .field input,
+.form-row .field select {
+  max-width: 100%;
+  min-width: 0;
+}
+
 @media (max-width: 520px) {
   .form-row {
     grid-template-columns: 1fr;

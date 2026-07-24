@@ -169,3 +169,9 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   required, own data only): raw JSON (entries, systems, goals, commitments,
   reviews, month stats, records) or an LLM-ready markdown brief. Download
   buttons on /monthly. No AI runs to produce exports.
+- Fixes: commitment target input types freely (string state, clamp on
+  submit), weekly target can no longer save as null (weekly defaults to 3;
+  display no longer masks null), days-left chip says "ends Sun", form-row grid
+  children clamped so time inputs stay inside cards on mobile.
+- NEXT SESSION: R6 accountability scoring engine. Read ACCOUNTABILITY-PLAN.md
+  (reviewed adaptation of Marks Accountability System v2.0 doc).

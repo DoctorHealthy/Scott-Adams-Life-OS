@@ -32,9 +32,10 @@ function StatusChip({ item }: { item: CommitmentItem }) {
     return <span className="review-badge badge-autopilot">PASSED</span>;
   if (item.status === "failed")
     return <span className="review-badge badge-attention">FAILED</span>;
+  // daysLeft includes today; every commitment week ends Sunday night.
   return (
     <span className="review-badge badge-soft">
-      {item.daysLeft} d left
+      {item.daysLeft}d left, ends Sun
     </span>
   );
 }
@@ -79,7 +80,9 @@ export default function CommitmentsManager({
   // One picker for everything you can commit to: any system, or the wake hold.
   const WAKE = "wake";
   const [picked, setPicked] = useState<string>(systems[0]?.id ?? WAKE);
-  const [target, setTarget] = useState(3);
+  // Kept as a string so typing (clearing, retyping) is never fought; clamped
+  // only on submit.
+  const [target, setTarget] = useState("3");
   const [toleranceMin, setToleranceMin] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -94,9 +97,10 @@ export default function CommitmentsManager({
     e.preventDefault();
     setError(null);
     setSubmitting(true);
+    const t = Math.min(maxTarget, Math.max(1, Math.round(Number(target)) || 1));
     const input = isWake
-      ? { kind: "wake_hold" as const, systemId: null, target, toleranceMin }
-      : { kind: "system_count" as const, systemId: picked || null, target };
+      ? { kind: "wake_hold" as const, systemId: null, target: t, toleranceMin }
+      : { kind: "system_count" as const, systemId: picked || null, target: t };
     const res = await createCommitment(input);
     setSubmitting(false);
     if ("error" in res) {
@@ -205,7 +209,7 @@ export default function CommitmentsManager({
                 value={picked}
                 onChange={(e) => {
                   setPicked(e.target.value);
-                  if (e.target.value === WAKE && target > 7) setTarget(7);
+                  if (e.target.value === WAKE && Number(target) > 7) setTarget("7");
                 }}
               >
                 {systems.map((s) => (
@@ -227,9 +231,8 @@ export default function CommitmentsManager({
                 min={1}
                 max={maxTarget}
                 value={target}
-                onChange={(e) =>
-                  setTarget(Math.min(maxTarget, Math.max(1, Number(e.target.value) || 1)))
-                }
+                placeholder="3"
+                onChange={(e) => setTarget(e.target.value)}
               />
             </div>
 

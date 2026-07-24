@@ -407,7 +407,8 @@ export default function SystemsManager({
                     type="number"
                     min={1}
                     max={21}
-                    value={form.target_per_week ?? 3}
+                    value={form.target_per_week ?? ""}
+                    placeholder="3"
                     onChange={(e) =>
                       setForm({
                         ...form,
