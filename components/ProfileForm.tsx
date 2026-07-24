@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveProfile, type ProfileInput } from "@/app/profile/actions";
 import { computeTargets } from "@/lib/diet/targets";
+import NumberField from "@/components/NumberField";
 
 const ACTIVITY_OPTIONS: { value: ProfileInput["activityLevel"]; label: string }[] = [
   { value: "sedentary", label: "Sedentary" },
@@ -106,11 +107,12 @@ export default function ProfileForm({ initial }: { initial: ProfileInput }) {
         <div className="form-row">
           <div className="field">
             <label>Age</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={form.age ?? ""}
-              onChange={(e) => set("age", Number(e.target.value) || null)}
+            <NumberField
+              value={form.age}
+              onValue={(n) => set("age", n)}
+              allowEmpty
+              min={0}
+              max={120}
             />
           </div>
           <div className="field">
@@ -127,21 +129,23 @@ export default function ProfileForm({ initial }: { initial: ProfileInput }) {
         <div className="form-row">
           <div className="field">
             <label>Height (cm)</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={form.heightCm ?? ""}
-              onChange={(e) => set("heightCm", Number(e.target.value) || null)}
+            <NumberField
+              value={form.heightCm}
+              onValue={(n) => set("heightCm", n)}
+              allowEmpty
+              min={0}
+              max={260}
             />
           </div>
           <div className="field">
             <label>Weight (kg)</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              step={0.1}
-              value={form.weightKg ?? ""}
-              onChange={(e) => set("weightKg", Number(e.target.value) || null)}
+            <NumberField
+              value={form.weightKg}
+              onValue={(n) => set("weightKg", n)}
+              allowEmpty
+              allowDecimal
+              min={0}
+              max={400}
             />
           </div>
         </div>

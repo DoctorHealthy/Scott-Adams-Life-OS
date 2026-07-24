@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import NumberField from "@/components/NumberField";
 import {
   buildShoppingList,
   type DietMeal,
@@ -356,21 +357,23 @@ export default function DietPlaybook({
             <div className="form-row">
               <div className="field">
                 <label>Calories (kcal)</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={mealForm.kcal}
-                  onChange={(e) => setMealForm({ ...mealForm, kcal: e.target.value })}
+                <NumberField
+                  value={mealForm.kcal === "" ? null : Number(mealForm.kcal)}
+                  onValue={(n) =>
+                    setMealForm({ ...mealForm, kcal: n == null ? "" : String(n) })
+                  }
+                  allowEmpty
                   placeholder="600"
                 />
               </div>
               <div className="field">
                 <label>Protein (g)</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={mealForm.protein}
-                  onChange={(e) => setMealForm({ ...mealForm, protein: e.target.value })}
+                <NumberField
+                  value={mealForm.protein === "" ? null : Number(mealForm.protein)}
+                  onValue={(n) =>
+                    setMealForm({ ...mealForm, protein: n == null ? "" : String(n) })
+                  }
+                  allowEmpty
                   placeholder="40"
                 />
               </div>
@@ -507,13 +510,12 @@ function TargetEditor({
 }) {
   return (
     <div className={`target${highlight ? " target-default" : ""}`}>
-      <input
+      <NumberField
         className="target-input"
-        type="number"
-        inputMode="numeric"
-        value={value}
+        value={value === "" ? null : Number(value)}
+        onValue={(n) => onChange(n == null ? "" : String(n))}
+        allowEmpty
         placeholder={computed != null ? String(computed) : "--"}
-        onChange={(e) => onChange(e.target.value)}
       />
       <div className="target-label">{label}</div>
       <div className="target-sub muted">

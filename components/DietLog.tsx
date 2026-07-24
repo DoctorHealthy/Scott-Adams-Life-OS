@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import NumberField from "@/components/NumberField";
 import type { DietMeal } from "@/lib/diet/meals";
 import type { EffectiveTargets } from "@/lib/diet/config";
 import { GLASS_ML, type DietLogValue } from "@/lib/diet/log";
@@ -29,16 +30,6 @@ export default function DietLog({
   }
   function bump(field: "kcal" | "protein" | "waterMl", delta: number) {
     set(field, value[field] + delta);
-  }
-  function setWeight(raw: string) {
-    if (raw.trim() === "") {
-      onChange({ ...value, weightKg: null });
-      return;
-    }
-    const n = Number(raw.replace(",", "."));
-    if (Number.isFinite(n) && n > 0) {
-      onChange({ ...value, weightKg: Math.round(n * 10) / 10 });
-    }
   }
   function addMeal(m: DietMeal) {
     onChange({
@@ -88,12 +79,12 @@ export default function DietLog({
           <button className="step-btn" onClick={() => bump("kcal", -100)}>
             &minus;100
           </button>
-          <input
+          <NumberField
             className="step-input"
-            type="number"
-            inputMode="numeric"
             value={value.kcal}
-            onChange={(e) => set("kcal", Number(e.target.value) || 0)}
+            onValue={(n) => set("kcal", n ?? 0)}
+            min={0}
+            aria-label="Calories"
           />
           <button className="step-btn" onClick={() => bump("kcal", 100)}>
             +100
@@ -113,12 +104,12 @@ export default function DietLog({
           <button className="step-btn" onClick={() => bump("protein", -10)}>
             &minus;10
           </button>
-          <input
+          <NumberField
             className="step-input"
-            type="number"
-            inputMode="numeric"
             value={value.protein}
-            onChange={(e) => set("protein", Number(e.target.value) || 0)}
+            onValue={(n) => set("protein", n ?? 0)}
+            min={0}
+            aria-label="Protein grams"
           />
           <button className="step-btn" onClick={() => bump("protein", 10)}>
             +10
@@ -164,15 +155,20 @@ export default function DietLog({
           Weight
           <span className="stepper-sub muted">kg, optional, when you weigh in</span>
         </span>
-        <input
+        <NumberField
           className="step-input"
-          type="number"
-          inputMode="decimal"
-          step={0.1}
+          value={value.weightKg}
+          onValue={(n) =>
+            onChange({
+              ...value,
+              weightKg: n != null && n > 0 ? Math.round(n * 10) / 10 : null,
+            })
+          }
+          allowEmpty
+          allowDecimal
           min={0}
           placeholder="--"
-          value={value.weightKg ?? ""}
-          onChange={(e) => setWeight(e.target.value)}
+          aria-label="Weight in kilograms"
         />
       </div>
 

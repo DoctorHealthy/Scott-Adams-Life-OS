@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { prettyDate } from "@/lib/constants";
+import { prettyDate, localDateStr } from "@/lib/constants";
+import { weekStartOf } from "@/lib/commitments/commitments";
+import NumberField from "@/components/NumberField";
 import {
   createCommitment,
   deleteCommitment,
@@ -32,10 +34,12 @@ function StatusChip({ item }: { item: CommitmentItem }) {
     return <span className="review-badge badge-autopilot">PASSED</span>;
   if (item.status === "failed")
     return <span className="review-badge badge-attention">FAILED</span>;
-  // daysLeft includes today; every commitment week ends Sunday night.
+  // The week always ends Sunday night. Show whole days remaining AFTER today
+  // (daysLeft counts today), so Friday reads "2 left" and Sunday "ends today".
+  const after = Math.max(0, item.daysLeft - 1);
   return (
     <span className="review-badge badge-soft">
-      {item.daysLeft}d left, ends Sun
+      {after === 0 ? "ends today" : `${after} day${after > 1 ? "s" : ""} left, ends Sun`}
     </span>
   );
 }
@@ -80,9 +84,7 @@ export default function CommitmentsManager({
   // One picker for everything you can commit to: any system, or the wake hold.
   const WAKE = "wake";
   const [picked, setPicked] = useState<string>(systems[0]?.id ?? WAKE);
-  // Kept as a string so typing (clearing, retyping) is never fought; clamped
-  // only on submit.
-  const [target, setTarget] = useState("3");
+  const [target, setTarget] = useState<number>(3);
   const [toleranceMin, setToleranceMin] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -97,7 +99,7 @@ export default function CommitmentsManager({
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const t = Math.min(maxTarget, Math.max(1, Math.round(Number(target)) || 1));
+    const t = Math.min(maxTarget, Math.max(1, Math.round(target) || 1));
     const input = isWake
       ? { kind: "wake_hold" as const, systemId: null, target: t, toleranceMin }
       : { kind: "system_count" as const, systemId: picked || null, target: t };
@@ -136,6 +138,9 @@ export default function CommitmentsManager({
     <div className="stack">
       <div className="card">
         <div className="block-title">This week&apos;s commitments (max 3)</div>
+        <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
+          Week of {prettyDate(weekStartOf(localDateStr()))} (Monday) through Sunday.
+        </p>
 
         {currentWeek.length === 0 ? (
           <p className="muted" style={{ margin: "8px 0 0", fontSize: 14 }}>
@@ -209,7 +214,7 @@ export default function CommitmentsManager({
                 value={picked}
                 onChange={(e) => {
                   setPicked(e.target.value);
-                  if (e.target.value === WAKE && Number(target) > 7) setTarget("7");
+                  if (e.target.value === WAKE && target > 7) setTarget(7);
                 }}
               >
                 {systems.map((s) => (
@@ -226,26 +231,23 @@ export default function CommitmentsManager({
               <label>
                 {isWake ? "Days on target this week (1 to 7)" : "Times this week (1 to 21)"}
               </label>
-              <input
-                type="number"
+              <NumberField
                 min={1}
                 max={maxTarget}
                 value={target}
                 placeholder="3"
-                onChange={(e) => setTarget(e.target.value)}
+                onValue={(n) => setTarget(n ?? 1)}
               />
             </div>
 
             {isWake ? (
               <div className="field">
                 <label>Tolerance (minutes around the wake target)</label>
-                <input
-                  type="number"
+                <NumberField
                   min={0}
                   max={120}
-                  step={5}
                   value={toleranceMin}
-                  onChange={(e) => setToleranceMin(Number(e.target.value))}
+                  onValue={(n) => setToleranceMin(n ?? 30)}
                 />
               </div>
             ) : null}

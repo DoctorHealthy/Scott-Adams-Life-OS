@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import NumberField from "@/components/NumberField";
 import { completeOnboarding } from "@/app/onboarding/actions";
 import { computeTargets } from "@/lib/diet/targets";
 import {
@@ -287,11 +288,10 @@ export default function OnboardingWizard({ email }: { email: string }) {
             </Field>
             <div className="form-row">
               <Field label="Age">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={intake.age ?? ""}
-                  onChange={(e) => set("age", Number(e.target.value) || null)}
+                <NumberField
+                  value={intake.age}
+                  onValue={(n) => set("age", n)}
+                  allowEmpty
                 />
               </Field>
               <Field label="Sex (for calorie math)">
@@ -306,20 +306,19 @@ export default function OnboardingWizard({ email }: { email: string }) {
             </div>
             <div className="form-row">
               <Field label="Height (cm)">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={intake.heightCm ?? ""}
-                  onChange={(e) => set("heightCm", Number(e.target.value) || null)}
+                <NumberField
+                  value={intake.heightCm}
+                  onValue={(n) => set("heightCm", n)}
+                  allowEmpty
+                  allowDecimal
                 />
               </Field>
               <Field label="Weight (kg)">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step={0.1}
-                  value={intake.weightKg ?? ""}
-                  onChange={(e) => set("weightKg", Number(e.target.value) || null)}
+                <NumberField
+                  value={intake.weightKg}
+                  onValue={(n) => set("weightKg", n)}
+                  allowEmpty
+                  allowDecimal
                 />
               </Field>
             </div>
@@ -339,18 +338,12 @@ export default function OnboardingWizard({ email }: { email: string }) {
                 </select>
               </Field>
               <Field label="Typical energy right now (1-10)">
-                <input
-                  type="number"
-                  inputMode="numeric"
+                <NumberField
+                  value={intake.energyBaseline}
+                  onValue={(n) => set("energyBaseline", n)}
+                  allowEmpty
                   min={1}
                   max={10}
-                  value={intake.energyBaseline ?? ""}
-                  onChange={(e) =>
-                    set(
-                      "energyBaseline",
-                      Math.min(10, Math.max(1, Number(e.target.value))) || null
-                    )
-                  }
                 />
               </Field>
             </div>
@@ -388,14 +381,13 @@ export default function OnboardingWizard({ email }: { email: string }) {
                 />
               </Field>
               <Field label="Hours of sleep you want">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step={0.5}
+                <NumberField
+                  value={intake.sleepHours}
+                  onValue={(n) => set("sleepHours", n ?? 8)}
+                  allowEmpty
                   min={6}
                   max={10}
-                  value={intake.sleepHours}
-                  onChange={(e) => set("sleepHours", Number(e.target.value) || 8)}
+                  allowDecimal
                 />
               </Field>
             </div>
@@ -493,18 +485,12 @@ export default function OnboardingWizard({ email }: { email: string }) {
                 </select>
               </Field>
               <Field label="Real sessions per week">
-                <input
-                  type="number"
-                  inputMode="numeric"
+                <NumberField
+                  value={intake.sessionsTarget}
+                  onValue={(n) => set("sessionsTarget", n ?? 3)}
+                  allowEmpty
                   min={1}
                   max={7}
-                  value={intake.sessionsTarget}
-                  onChange={(e) =>
-                    set(
-                      "sessionsTarget",
-                      Math.min(7, Math.max(1, Number(e.target.value) || 3))
-                    )
-                  }
                 />
               </Field>
             </div>

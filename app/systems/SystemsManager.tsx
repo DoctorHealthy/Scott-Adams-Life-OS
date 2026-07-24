@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { DOMAINS, METRIC_TYPES } from "@/lib/constants";
 import { DOMAIN_EXAMPLES, SYSTEM_TEMPLATES } from "@/lib/systems/examples";
 import type { MetricType, System } from "@/lib/types";
+import NumberField from "@/components/NumberField";
 import {
   createSystem,
   updateSystem,
@@ -403,18 +404,13 @@ export default function SystemsManager({
               {form.cadence === "weekly" ? (
                 <div className="field">
                   <label>Times per week</label>
-                  <input
-                    type="number"
+                  <NumberField
                     min={1}
                     max={21}
-                    value={form.target_per_week ?? ""}
+                    value={form.target_per_week}
                     placeholder="3"
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        target_per_week:
-                          e.target.value === "" ? null : Number(e.target.value),
-                      })
+                    onValue={(n) =>
+                      setForm({ ...form, target_per_week: n ?? 3 })
                     }
                   />
                   <span className="muted" style={{ fontSize: 12 }}>

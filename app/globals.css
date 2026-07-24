@@ -150,6 +150,18 @@ textarea:focus {
   border-color: var(--accent);
 }
 
+/* iOS Safari gives native date/time inputs a wide intrinsic size and ignores
+   width, so they spill past narrow cards (e.g. the Sleep row on Today).
+   Resetting the native appearance makes them honor width; the tap-to-pick
+   still works. box-sizing:border-box (set globally) keeps padding inside. */
+input[type="time"],
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* ---------- buttons ---------- */
 .btn {
   display: inline-flex;

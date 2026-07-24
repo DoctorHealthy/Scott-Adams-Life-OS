@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import NumberField from "@/components/NumberField";
 import { localDateStr } from "@/lib/constants";
 import {
   computeSleepStats,
@@ -157,13 +158,10 @@ export default function SleepPlaybook({
           </div>
           <div className="field">
             <label>Target sleep (hours)</label>
-            <input
-              type="number"
-              inputMode="numeric"
+            <NumberField
               value={cfg.sleepHours}
-              onChange={(e) =>
-                setCfg({ ...cfg, sleepHours: Number(e.target.value) || 8 })
-              }
+              onValue={(n) => setCfg({ ...cfg, sleepHours: n ?? 8 })}
+              allowEmpty
             />
           </div>
         </div>

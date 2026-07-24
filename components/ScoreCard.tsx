@@ -360,7 +360,7 @@ export default function ScoreCard({
             <div className="field">
               <label>Target (EUR, blank to clear)</label>
               <input
-                type="number"
+                type="text"
                 min={0}
                 inputMode="numeric"
                 value={fundTarget}
@@ -393,7 +393,7 @@ export default function ScoreCard({
             <label>Log a payout (you spent the fund)</label>
             <div className="form-row" style={{ marginTop: 6 }}>
               <input
-                type="number"
+                type="text"
                 min={0}
                 inputMode="decimal"
                 value={payoutAmt}
@@ -775,7 +775,7 @@ function SettingsPanel({
         <div className="field">
           <label>Cutoff hour (0 to 23)</label>
           <input
-            type="number"
+            type="text"
             min={0}
             max={23}
             inputMode="numeric"
@@ -786,7 +786,7 @@ function SettingsPanel({
         <div className="field">
           <label>Sleep tolerance (min)</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="numeric"
             value={sleepTol}
@@ -799,7 +799,7 @@ function SettingsPanel({
       <div className="field">
         <label>Daily fine (EUR, any non-perfect day)</label>
         <input
-          type="number"
+          type="text"
           min={0}
           inputMode="decimal"
           value={dailyFine}
@@ -813,7 +813,7 @@ function SettingsPanel({
         <div className="field">
           <label>B</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="decimal"
             value={wfB}
@@ -823,7 +823,7 @@ function SettingsPanel({
         <div className="field">
           <label>C</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="decimal"
             value={wfC}
@@ -835,7 +835,7 @@ function SettingsPanel({
         <div className="field">
           <label>D</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="decimal"
             value={wfD}
@@ -845,7 +845,7 @@ function SettingsPanel({
         <div className="field">
           <label>F</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="decimal"
             value={wfF}
@@ -881,7 +881,7 @@ function SettingsPanel({
         <div className="field">
           <label>Yellow</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="decimal"
             value={drkY}
@@ -891,7 +891,7 @@ function SettingsPanel({
         <div className="field">
           <label>Red</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="decimal"
             value={drkR}
@@ -902,7 +902,7 @@ function SettingsPanel({
       <div className="field">
         <label>Critical</label>
         <input
-          type="number"
+          type="text"
           min={0}
           inputMode="decimal"
           value={drkC}
@@ -916,7 +916,7 @@ function SettingsPanel({
         <div className="field">
           <label>C</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="decimal"
             value={wrkC}
@@ -926,7 +926,7 @@ function SettingsPanel({
         <div className="field">
           <label>F</label>
           <input
-            type="number"
+            type="text"
             min={0}
             inputMode="decimal"
             value={wrkF}
