@@ -315,9 +315,45 @@ export async function GET(request: Request) {
         continue;
       }
 
+      // 2c) "BED"/"DOWN": log tonight's bedtime. Attributed to the wake day so
+      // bed and wake land on ONE entry (duration needs both): an evening bed
+      // (>= 18:00) belongs to tomorrow's sleep; an after-midnight bed to today.
+      if (/^(bed|down)[.! ]*$/i.test(text)) {
+        const uid = userByChat.get(chatId);
+        if (!uid) continue;
+        const tz = tzOf(uid);
+        const sentAt = u.message?.date ? new Date(u.message.date * 1000) : now;
+        const local = localNowIn(tz, sentAt);
+        const targetDate = local.minutes >= 18 * 60 ? addDays(local.date, 1) : local.date;
+        const bed = minToHHMM(local.minutes);
+
+        const { data: existing } = await admin
+          .from("entries")
+          .select("id, module_logs")
+          .eq("user_id", uid)
+          .eq("date", targetDate)
+          .maybeSingle();
+        const ml = (existing?.module_logs ?? {}) as Record<string, unknown>;
+        const sleep = readSleepLog(ml.sleep);
+        if (sleep.bed) {
+          await sendTelegram(chatId, `Already logged: in bed at ${sleep.bed}.`);
+          inboxHandled++;
+          continue;
+        }
+        const nextModuleLogs = { ...ml, sleep: { ...sleep, bed } };
+        if (existing) {
+          await admin.from("entries").update({ module_logs: nextModuleLogs }).eq("id", existing.id);
+        } else {
+          await admin.from("entries").insert({ user_id: uid, date: targetDate, module_logs: nextModuleLogs });
+        }
+        await sendTelegram(chatId, `In bed at ${bed}, logged. Reply UP when you wake and I close the night.`);
+        inboxHandled++;
+        continue;
+      }
+
       // 3) Anything else from a linked chat: one-line help.
       if (userByChat.has(chatId)) {
-        await sendTelegram(chatId, "Reply UP when you wake and I log it, PAID to settle fines. Everything else lives in the app.");
+        await sendTelegram(chatId, "UP when you wake, BED when you turn in, PAID to settle fines. Everything else lives in the app.");
         inboxHandled++;
       }
     }

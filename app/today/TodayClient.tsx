@@ -42,7 +42,12 @@ import { computeBriefingSignals } from "@/lib/today/briefing";
 import { deriveFocusLine } from "@/lib/today/focus";
 import { gemForDate } from "@/lib/mind/gems";
 import Nudges from "@/components/Nudges";
-import { ScoreChip, LockedBanner, type ScoreChipData } from "@/components/ScoreChip";
+import {
+  ScoreChip,
+  LockedBanner,
+  TodayScoreCard,
+  type TodayScoreData,
+} from "@/components/ScoreChip";
 import {
   computeGoalProgressInputs,
   currentQuarter,
@@ -121,7 +126,7 @@ export default function TodayClient({
   goals,
   reviewWeeklyDay,
   commitments,
-  scoreChip,
+  score,
 }: {
   userId: string;
   systems: System[];
@@ -135,7 +140,7 @@ export default function TodayClient({
   goals: Goal[];
   reviewWeeklyDay: number;
   commitments: TodayCommitment[];
-  scoreChip?: ScoreChipData | null;
+  score?: TodayScoreData | null;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -460,7 +465,7 @@ export default function TodayClient({
   return (
     <div className="today-calm">
       {/* Entertainment lock warning: first thing on the page when active. */}
-      {scoreChip?.locked ? <LockedBanner rule={scoreChip.lockRule} /> : null}
+      {score?.locked ? <LockedBanner rule={score.lockRule} /> : null}
 
       {/* Header */}
       <div className="card">
@@ -468,9 +473,15 @@ export default function TodayClient({
           <div>
             {tag ? <div className="eyebrow">{tag}</div> : null}
             <h1 style={{ marginTop: tag ? 4 : 0 }}>{prettyDate(date)}</h1>
-            {scoreChip ? (
+            {score ? (
               <div style={{ marginTop: 8 }}>
-                <ScoreChip {...scoreChip} />
+                <ScoreChip
+                  points={score.points}
+                  max={score.max}
+                  grade={score.grade}
+                  locked={score.locked}
+                  lockRule={score.lockRule}
+                />
               </div>
             ) : null}
           </div>
@@ -537,6 +548,9 @@ export default function TodayClient({
       ) : null}
 
       {error ? <div className="alert alert-error">{error}</div> : null}
+
+      {/* Accountability: fund progress + this week's standing (R6). */}
+      {score ? <TodayScoreCard data={score} /> : null}
 
       {/* Systems checklist: the user's real systems, ordered by day flow. */}
       {orderedSystems.length === 0 ? (
@@ -803,7 +817,11 @@ export default function TodayClient({
                     }}
                   >
                     {c.status === "active"
-                      ? `${c.count}/${c.target} · ${c.daysLeft}d left`
+                      ? `${c.count}/${c.target} · ${
+                          Math.max(0, c.daysLeft - 1) === 0
+                            ? "ends today"
+                            : `${Math.max(0, c.daysLeft - 1)}d left`
+                        }`
                       : c.status.toUpperCase()}
                   </span>
                 </div>

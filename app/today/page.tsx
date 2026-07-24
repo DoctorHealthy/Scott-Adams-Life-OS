@@ -98,16 +98,25 @@ export default async function TodayPage() {
     };
   });
 
-  // Accountability day-score (R6). Code computes everything here; the chip and
-  // locked banner only display these numbers, never recompute them.
+  // Accountability (R6). Code computes everything here; Today's chip, banner,
+  // and card only display these numbers, never recompute them.
   const scoreState = await loadScoreState(supabase, user.id, today);
-  const scoreChip = scoreState.enabled
+  const score = scoreState.enabled
     ? {
         points: scoreState.todayScore.points,
         max: scoreState.todayScore.max,
         grade: scoreState.todayGrade,
         locked: scoreState.lock.locked,
         lockRule: scoreState.lock.rule,
+        weekPoints: scoreState.week.points,
+        weekMax: scoreState.week.max,
+        weekProjection: scoreState.weekProjection,
+        fundName: scoreState.fund.name,
+        fundBalance: scoreState.fund.balance,
+        fundTargetEur: scoreState.fund.targetEur,
+        fundPct: scoreState.fund.progressPct,
+        pendingFinesTotal: scoreState.pendingFinesTotal,
+        pendingRunsCount: scoreState.pendingRuns.length,
       }
     : null;
 
@@ -130,7 +139,7 @@ export default async function TodayPage() {
           )}
           reviewWeeklyDay={readReviewConfig(profile?.coaching_prefs).weeklyDay}
           commitments={commitments}
-          scoreChip={scoreChip}
+          score={score}
         />
       </main>
     </div>
