@@ -221,4 +221,25 @@ Quick state of the build so we resume fast. The full plan is MASTER-BUILD-SPEC.m
   - Deferred: Sleep has no "Min" floor yet (needs both bed+wake); weekend-lock
     escalation for repeated failed weeks is not special-cased (fine/run
     escalation covers the spirit). Revisit if Mark wants them.
-- NEXT SESSION: R6 shipped. No R7 planned yet; next is whatever Mark raises.
+- R6.1 refinements (no migration): DONE.
+  - Accountability now splits scored systems: DAILY systems drive the daily
+    grade + daily fines; WEEKLY-target systems (cadence weekly or counters) are
+    judged ONCE at week end (short of target = one fine, size dailyFine),
+    never daily-fined (lib/score/score.ts isWeeklyScored + weeklySystemResults;
+    cron weekly block). dayGrade/weekGrade return best grade when max is 0 (no
+    daily systems = vacuously clean, no phantom fines).
+  - Exceptions are date RANGES now ({from,to,reason,kind}; old {date} rows
+    migrate in readScoreConfig). Actions: declareException(from,to,...),
+    removeException(from,to), liftLock(today), resetAccountability(today)
+    (waives all pending fine+run and lifts the lock; fund untouched),
+    addManualLedger (manual fine/run). Cron auto-logs fines at cutoff already.
+  - Momentum ring fixed: daily systems score over days elapsed since created_at
+    (unlogged = miss), not just logged days; weekly use count vs target*weeks.
+  - Commitments kept but reframed as uncapped "weekly sprints" (cap 3 -> 12
+    backstop), clearly separate from the standing accountability system.
+  - Score card settings rewritten into labeled sections (Scored systems /
+    Timing / Money / Runs / Escalation / Partner / Rewards / Danger), no bare
+    B/C/D/F, grouped toggles; weekly-habits progress section; lift-lock, reset,
+    manual add, range-exception UI with collapsed history.
+  - Partner page shows both people's fund progress bar + pending + lock.
+- NEXT SESSION: R6 + refinements shipped. Next is whatever Mark raises.
