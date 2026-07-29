@@ -7,6 +7,7 @@ import PartnerView, {
 } from "@/components/PartnerView";
 import { addDays, localDateStr } from "@/lib/constants";
 import { loadScoreState } from "@/lib/score/state";
+import { readScoreConfig } from "@/lib/score/config";
 import { readSleepConfig } from "@/lib/sleep/sleep";
 import { readExerciseConfig } from "@/lib/exercise/exercise";
 import { readDietConfig, effectiveTargets } from "@/lib/diet/config";
@@ -115,6 +116,8 @@ export default async function PartnerPage() {
 
   // ---- the partner's week, via the sanitizing RPC ----
   let friend = null;
+  let friendFundName = "";
+  let friendFundTargetEur: number | null = null;
   if (friendId) {
     const [
       { data: fProfile },
@@ -141,6 +144,10 @@ export default async function PartnerPage() {
         to_date: end,
       }),
     ]);
+
+    const fCfg = readScoreConfig(fProfile?.coaching_prefs);
+    friendFundName = fCfg.fund.name;
+    friendFundTargetEur = fCfg.fund.targetEur;
 
     const hidden = new Set(readHiddenSystems(fProfile?.coaching_prefs));
     const fSys = (
@@ -177,6 +184,8 @@ export default async function PartnerPage() {
   const myLedger: LedgerSummary | null = myScore.enabled
     ? {
         fundName: myScore.fund.name,
+        fundTargetEur: myScore.fund.targetEur,
+        fundPct: myScore.fund.progressPct,
         fundBalance: myScore.fund.balance,
         pendingFinesTotal: myScore.pendingFinesTotal,
         pendingRunsCount: myScore.pendingRuns.length,
@@ -215,8 +224,15 @@ export default async function PartnerPage() {
       const latestLock = fRows.find(
         (r) => r.kind === "lock" && r.status !== "waived"
       );
+      const balance = Math.round((finesDone - payouts) * 100) / 100;
       friendLedger = {
-        fundBalance: Math.round((finesDone - payouts) * 100) / 100,
+        fundName: friendFundName,
+        fundTargetEur: friendFundTargetEur,
+        fundPct:
+          friendFundTargetEur != null
+            ? Math.min(100, Math.round((balance / friendFundTargetEur) * 100))
+            : null,
+        fundBalance: balance,
         pendingFinesTotal: Math.round(pendingFinesTotal * 100) / 100,
         pendingRunsCount,
         locked: latestLock ? latestLock.status === "pending" : false,

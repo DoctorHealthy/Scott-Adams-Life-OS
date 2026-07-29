@@ -93,7 +93,8 @@ export default function CommitmentsManager({
 
   const isWake = picked === WAKE;
   const maxTarget = isWake ? 7 : 21;
-  const canAdd = currentWeek.length < 3;
+  // Matches the action's generous backstop (was 3). Sprints are uncapped in practice.
+  const canAdd = currentWeek.length < 12;
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -137,14 +138,18 @@ export default function CommitmentsManager({
   return (
     <div className="stack">
       <div className="card">
-        <div className="block-title">This week&apos;s commitments (max 3)</div>
+        <div className="block-title">Weekly sprints</div>
+        <p className="muted" style={{ margin: "6px 0 0", fontSize: 12 }}>
+          Optional one-week pushes, separate from your standing accountability
+          systems. Add as many as you can actually hold.
+        </p>
         <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
           Week of {prettyDate(weekStartOf(localDateStr()))} (Monday) through Sunday.
         </p>
 
         {currentWeek.length === 0 ? (
           <p className="muted" style={{ margin: "8px 0 0", fontSize: 14 }}>
-            No commitment set this week. Draw a hard line below.
+            No sprint set this week. Draw a hard line below.
           </p>
         ) : (
           <div className="review-rows">
@@ -266,7 +271,7 @@ export default function CommitmentsManager({
           </form>
         ) : (
           <p className="muted" style={{ margin: "16px 0 0", fontSize: 13 }}>
-            Three commitments a week, maximum. Hard lines, not a wish list.
+            Hard lines, not a wish list.
           </p>
         )}
 

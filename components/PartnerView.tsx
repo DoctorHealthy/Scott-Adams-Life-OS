@@ -21,7 +21,9 @@ export type FriendshipRow = {
 };
 
 export type LedgerSummary = {
-  fundName?: string;
+  fundName: string;
+  fundTargetEur: number | null;
+  fundPct: number | null;
   fundBalance: number;
   pendingFinesTotal: number;
   pendingRunsCount: number;
@@ -192,14 +194,46 @@ function WeekCard({ person }: { person: WeekPerson }) {
 }
 
 function LedgerLine({ title, data }: { title: string; data: LedgerSummary }) {
+  const pct = data.fundPct ?? 0;
   return (
     <div className="card" style={{ flex: 1, minWidth: 280 }}>
       <div className="block-title">{title}</div>
-      <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
-        {`${eur(data.fundBalance)} in the fund - ${eur(
-          data.pendingFinesTotal
-        )} fines pending - ${data.pendingRunsCount} runs pending`}
+
+      {data.fundName ? (
+        <div style={{ marginTop: 8, fontSize: 13, fontWeight: 600 }}>
+          {data.fundName}
+        </div>
+      ) : null}
+
+      {data.fundTargetEur != null ? (
+        <div
+          style={{
+            height: 8,
+            borderRadius: 999,
+            background: "var(--panel-2)",
+            overflow: "hidden",
+            marginTop: 6,
+          }}
+        >
+          <div
+            style={{ height: "100%", width: `${pct}%`, background: "var(--accent)" }}
+          />
+        </div>
+      ) : null}
+
+      <p
+        className="muted"
+        style={{ margin: "6px 0 0", fontSize: 13, fontVariantNumeric: "tabular-nums" }}
+      >
+        {data.fundTargetEur != null
+          ? `${eur(data.fundBalance)} / ${eur(data.fundTargetEur)}`
+          : eur(data.fundBalance)}
       </p>
+
+      <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
+        {`${eur(data.pendingFinesTotal)} fines pending - ${data.pendingRunsCount} runs pending`}
+      </p>
+
       {data.locked ? (
         <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: "var(--bad)" }}>
           Entertainment locked
