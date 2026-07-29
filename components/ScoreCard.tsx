@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { localDateStr, prettyDate } from "@/lib/constants";
 import { dayGradeTone, weekGradeTone } from "@/lib/score/score";
@@ -12,6 +12,9 @@ import {
   setScoreSettings,
   declareException,
   removeException,
+  liftLock,
+  resetAccountability,
+  addManualLedger,
   markLedgerDone,
   waiveLedger,
   logPayout,
@@ -53,7 +56,9 @@ export default function ScoreCard({
 
   // Collapsible sections. Everything but the summary stays folded by default.
   const [showFund, setShowFund] = useState(false);
+  const [showManualFine, setShowManualFine] = useState(false);
   const [showEx, setShowEx] = useState(false);
+  const [showAllEx, setShowAllEx] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   // Setup (scoring off) selection.
@@ -67,8 +72,13 @@ export default function ScoreCard({
   const [payoutAmt, setPayoutAmt] = useState("");
   const [payoutLabel, setPayoutLabel] = useState("");
 
-  // Exceptions.
-  const [exDate, setExDate] = useState(localDateStr());
+  // Manual fine.
+  const [mfAmt, setMfAmt] = useState("");
+  const [mfLabel, setMfLabel] = useState("");
+
+  // Exceptions are date ranges now. A single day is the same date twice.
+  const [exFrom, setExFrom] = useState(localDateStr());
+  const [exTo, setExTo] = useState(localDateStr());
   const [exReason, setExReason] = useState("");
 
   async function run(fn: () => Promise<ActionResult>, onOk?: () => void) {
@@ -151,6 +161,13 @@ export default function ScoreCard({
   const { week, weekProjection, todayScore, todayGrade, lock, fund } = state;
   const weekColor = TONE_COLOR[weekGradeTone(weekProjection) as Tone];
   const todayColor = TONE_COLOR[dayGradeTone(todayGrade) as Tone];
+
+  // Exceptions, most-recent-first. Collapse past the first five so a long list
+  // never stacks up.
+  const sortedExceptions = [...state.config.exceptions].sort((a, b) =>
+    a.from < b.from ? 1 : a.from > b.from ? -1 : 0
+  );
+  const shownExceptions = showAllEx ? sortedExceptions : sortedExceptions.slice(0, 5);
 
   return (
     <div className="card">
@@ -286,13 +303,31 @@ export default function ScoreCard({
 
       {/* lock */}
       {lock.locked ? (
-        <p style={{ margin: "14px 0 0", fontSize: 14, color: "var(--bad)" }}>
-          Entertainment locked until{" "}
-          {lock.rule === "green3"
-            ? "three consecutive Green days"
-            : "a Green day"}
-          .
-        </p>
+        <div style={{ margin: "14px 0 0" }}>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--bad)" }}>
+            Entertainment locked until{" "}
+            {lock.rule === "green3"
+              ? "three consecutive Green days"
+              : "a Green day"}
+            .
+          </p>
+          <button
+            className="btn btn-ghost btn-auto"
+            style={{ marginTop: 8 }}
+            disabled={busy}
+            onClick={() => run(() => liftLock(today))}
+          >
+            Lift the lock
+          </button>
+        </div>
+      ) : null}
+
+      {/* weekly habits (judged at week end) */}
+      {state.weeklySystems.length > 0 ? (
+        <>
+          <div className="divider" style={{ margin: "18px 0" }} />
+          <WeeklyHabits systems={state.weeklySystems} />
+        </>
       ) : null}
 
       <div className="divider" style={{ margin: "18px 0" }} />
@@ -361,7 +396,6 @@ export default function ScoreCard({
               <label>Target (EUR, blank to clear)</label>
               <input
                 type="text"
-                min={0}
                 inputMode="numeric"
                 value={fundTarget}
                 onChange={(e) => setFundTarget(e.target.value)}
@@ -394,7 +428,6 @@ export default function ScoreCard({
             <div className="form-row" style={{ marginTop: 6 }}>
               <input
                 type="text"
-                min={0}
                 inputMode="decimal"
                 value={payoutAmt}
                 onChange={(e) => setPayoutAmt(e.target.value)}
@@ -480,6 +513,65 @@ export default function ScoreCard({
         </p>
       ) : null}
 
+      {/* add a fine by hand */}
+      <div style={{ marginTop: 14 }}>
+        <button
+          className="btn btn-ghost btn-auto"
+          onClick={() => setShowManualFine((s) => !s)}
+        >
+          {showManualFine ? "Hide" : "Add a fine by hand"}
+        </button>
+        {showManualFine ? (
+          <div style={{ marginTop: 10 }}>
+            <p className="muted" style={{ margin: "0 0 10px", fontSize: 13 }}>
+              The cron logs fines automatically at your cutoff. This is for
+              manual adjustments.
+            </p>
+            <div className="form-row">
+              <div className="field">
+                <label>Amount (EUR)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={mfAmt}
+                  onChange={(e) => setMfAmt(e.target.value)}
+                  placeholder="Amount"
+                />
+              </div>
+              <div className="field">
+                <label>Label</label>
+                <input
+                  value={mfLabel}
+                  onChange={(e) => setMfLabel(e.target.value)}
+                  placeholder="What for"
+                />
+              </div>
+            </div>
+            <button
+              className="btn btn-auto"
+              disabled={busy || numOr(mfAmt, 0) <= 0}
+              onClick={() =>
+                run(
+                  () =>
+                    addManualLedger({
+                      kind: "fine",
+                      amountEur: numOr(mfAmt, 0),
+                      label: mfLabel,
+                      today,
+                    }),
+                  () => {
+                    setMfAmt("");
+                    setMfLabel("");
+                  }
+                )
+              }
+            >
+              {busy ? "Adding..." : "Add fine"}
+            </button>
+          </div>
+        ) : null}
+      </div>
+
       <div className="divider" style={{ margin: "18px 0" }} />
 
       {/* exceptions */}
@@ -497,25 +589,38 @@ export default function ScoreCard({
         <div style={{ marginTop: 12 }}>
           <p className="muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
             An excused day carries no penalty and drops out of the week. A
-            bad-body day waives the run only; the fine still applies.
+            bad-body day waives the run only; the fine still applies. Use the
+            same date in From and To for a single day.
           </p>
           <div className="form-row">
             <div className="field">
-              <label>Date</label>
+              <label>From</label>
               <input
                 type="date"
-                value={exDate}
-                onChange={(e) => setExDate(e.target.value)}
+                value={exFrom}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExFrom(v);
+                  if (exTo < v) setExTo(v);
+                }}
               />
             </div>
             <div className="field">
-              <label>Reason</label>
+              <label>To</label>
               <input
-                value={exReason}
-                onChange={(e) => setExReason(e.target.value)}
-                placeholder="Short note"
+                type="date"
+                value={exTo}
+                onChange={(e) => setExTo(e.target.value)}
               />
             </div>
+          </div>
+          <div className="field">
+            <label>Reason</label>
+            <input
+              value={exReason}
+              onChange={(e) => setExReason(e.target.value)}
+              placeholder="Short note"
+            />
           </div>
           <div className="btn-row">
             <button
@@ -523,32 +628,32 @@ export default function ScoreCard({
               disabled={busy}
               onClick={() =>
                 run(
-                  () => declareException(exDate, exReason, "excused"),
+                  () => declareException(exFrom, exTo, exReason, "excused"),
                   () => setExReason("")
                 )
               }
             >
-              Excused day
+              Excused (drop from scoring)
             </button>
             <button
               className="btn btn-auto"
               disabled={busy}
               onClick={() =>
                 run(
-                  () => declareException(exDate, exReason, "bad_body"),
+                  () => declareException(exFrom, exTo, exReason, "bad_body"),
                   () => setExReason("")
                 )
               }
             >
-              Bad-body day
+              Bad-body day (waive the run only)
             </button>
           </div>
 
-          {state.config.exceptions.length > 0 ? (
+          {sortedExceptions.length > 0 ? (
             <div style={{ marginTop: 14 }}>
-              {state.config.exceptions.map((e) => (
+              {shownExceptions.map((e) => (
                 <div
-                  key={e.date}
+                  key={`${e.from}_${e.to}`}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -558,7 +663,9 @@ export default function ScoreCard({
                   }}
                 >
                   <span style={{ flex: 1, fontSize: 13, minWidth: 0 }}>
-                    {prettyDate(e.date)}
+                    {e.from === e.to
+                      ? prettyDate(e.from)
+                      : `${prettyDate(e.from)} to ${prettyDate(e.to)}`}
                     <span className="muted">
                       {" "}
                       {e.kind === "bad_body" ? "bad-body" : "excused"}
@@ -570,12 +677,21 @@ export default function ScoreCard({
                     style={{ width: 30, height: 30 }}
                     aria-label="Remove exception"
                     disabled={busy}
-                    onClick={() => run(() => removeException(e.date))}
+                    onClick={() => run(() => removeException(e.from, e.to))}
                   >
                     &times;
                   </button>
                 </div>
               ))}
+              {sortedExceptions.length > 5 ? (
+                <button
+                  className="btn btn-ghost btn-auto"
+                  style={{ marginTop: 10 }}
+                  onClick={() => setShowAllEx((s) => !s)}
+                >
+                  {showAllEx ? "Show fewer" : `Show all (${sortedExceptions.length})`}
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -600,6 +716,15 @@ export default function ScoreCard({
           systems={systems}
           busy={busy}
           onSave={(patch) => run(() => setScoreSettings(patch))}
+          onReset={() => {
+            if (
+              !window.confirm(
+                "Reset outstanding? Waives every pending fine and run and lifts the lock. Your fund total stays."
+              )
+            )
+              return;
+            run(() => resetAccountability(today));
+          }}
           onDisable={() => {
             if (!window.confirm("Turn scoring off? Your history stays.")) return;
             run(() => disableScoring());
@@ -612,6 +737,90 @@ export default function ScoreCard({
           {error}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function WeeklyHabits({ systems }: { systems: ScoreState["weeklySystems"] }) {
+  return (
+    <div>
+      <div className="block-title">Weekly habits (judged at week end)</div>
+      <div
+        style={{
+          marginTop: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+        }}
+      >
+        {systems.map((w) => {
+          const pct = w.target
+            ? Math.min(100, Math.round((w.count / w.target) * 100))
+            : 0;
+          const countLabel = `${w.count}/${w.target ?? "no target"}${
+            w.unit ? " " + w.unit : ""
+          }`;
+          return (
+            <div key={w.id}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  gap: 12,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: w.met ? "var(--good)" : "var(--text)",
+                  }}
+                >
+                  {w.name}
+                </span>
+                <span
+                  className="muted"
+                  style={{
+                    fontSize: 12,
+                    fontVariantNumeric: "tabular-nums",
+                    color: w.met ? "var(--good)" : undefined,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {countLabel}
+                  {w.met ? " met" : ""}
+                </span>
+              </div>
+              <span
+                style={{
+                  display: "block",
+                  height: 8,
+                  borderRadius: 999,
+                  background: "var(--panel-2)",
+                  overflow: "hidden",
+                  marginTop: 8,
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    height: "100%",
+                    width: `${pct}%`,
+                    background: "var(--accent)",
+                  }}
+                />
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="muted" style={{ margin: "12px 0 0", fontSize: 12 }}>
+        Miss the weekly target and it costs one fine at week end. Never fined
+        daily.
+      </p>
     </div>
   );
 }
@@ -670,17 +879,47 @@ function ObligationRow({
 
 // ---------------------------------------------------------------------------
 
+// Small, calm building blocks so each settings sub-section reads the same:
+// an uppercase label, then one line of muted help.
+function SubLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="diet-sub-label" style={{ marginBottom: 4 }}>
+      {children}
+    </div>
+  );
+}
+
+function Help({ children }: { children: ReactNode }) {
+  return (
+    <p className="muted" style={{ margin: "0 0 12px", fontSize: 12, lineHeight: 1.5 }}>
+      {children}
+    </p>
+  );
+}
+
+function GroupLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="muted" style={{ fontSize: 12, margin: "8px 0 8px" }}>
+      {children}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
 function SettingsPanel({
   config,
   systems,
   busy,
   onSave,
+  onReset,
   onDisable,
 }: {
   config: ScoreConfig;
   systems: PickSystem[];
   busy: boolean;
   onSave: (patch: ScoreSettingsInput) => void;
+  onReset: () => void;
   onDisable: () => void;
 }) {
   const [sysIds, setSysIds] = useState<string[]>(config.systemIds);
@@ -747,10 +986,12 @@ function SettingsPanel({
 
   return (
     <div style={{ marginTop: 14 }}>
-      {/* scored systems */}
-      <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
-        Scored systems (1 point each per day)
-      </div>
+      {/* Scored systems */}
+      <SubLabel>Scored systems</SubLabel>
+      <Help>
+        Daily systems set your daily grade. Weekly systems (Nx/week) are judged
+        once at week end.
+      </Help>
       {systems.length === 0 ? (
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>
           No active systems to score.
@@ -768,95 +1009,90 @@ function SettingsPanel({
         ))
       )}
 
-      <div className="divider" style={{ margin: "16px 0" }} />
+      <div className="divider" style={{ margin: "18px 0" }} />
 
-      {/* timing */}
-      <div className="form-row">
-        <div className="field">
-          <label>Cutoff hour (0 to 23)</label>
-          <input
-            type="text"
-            min={0}
-            max={23}
-            inputMode="numeric"
-            value={cutoffHour}
-            onChange={(e) => setCutoffHour(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label>Sleep tolerance (min)</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="numeric"
-            value={sleepTol}
-            onChange={(e) => setSleepTol(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* fines */}
+      {/* Timing */}
+      <SubLabel>Timing</SubLabel>
       <div className="field">
-        <label>Daily fine (EUR, any non-perfect day)</label>
+        <label>Judge my day at (hour, 0 to 23)</label>
         <input
           type="text"
-          min={0}
+          inputMode="numeric"
+          value={cutoffHour}
+          onChange={(e) => setCutoffHour(e.target.value)}
+        />
+        <p className="muted" style={{ margin: "6px 0 0", fontSize: 12 }}>
+          3 means 3am, the end of your day.
+        </p>
+      </div>
+      <div className="field">
+        <label>Sleep grace (minutes)</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={sleepTol}
+          onChange={(e) => setSleepTol(e.target.value)}
+        />
+        <p className="muted" style={{ margin: "6px 0 0", fontSize: 12 }}>
+          How far off bed time or duration still counts.
+        </p>
+      </div>
+
+      <div className="divider" style={{ margin: "18px 0" }} />
+
+      {/* Money */}
+      <SubLabel>Money</SubLabel>
+      <div className="field">
+        <label>Fine for any non-perfect day (EUR)</label>
+        <input
+          type="text"
           inputMode="decimal"
           value={dailyFine}
           onChange={(e) => setDailyFine(e.target.value)}
         />
       </div>
-      <div className="muted" style={{ fontSize: 12, margin: "4px 0 6px" }}>
-        Weekly fines (EUR) by grade
+      <GroupLabel>Weekly fine by grade</GroupLabel>
+      <div className="field">
+        <label>Week grade B (25 to 27 of 28): fine</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={wfB}
+          onChange={(e) => setWfB(e.target.value)}
+        />
       </div>
-      <div className="form-row">
-        <div className="field">
-          <label>B</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="decimal"
-            value={wfB}
-            onChange={(e) => setWfB(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label>C</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="decimal"
-            value={wfC}
-            onChange={(e) => setWfC(e.target.value)}
-          />
-        </div>
+      <div className="field">
+        <label>Week grade C (18 to 21): fine</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={wfC}
+          onChange={(e) => setWfC(e.target.value)}
+        />
       </div>
-      <div className="form-row">
-        <div className="field">
-          <label>D</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="decimal"
-            value={wfD}
-            onChange={(e) => setWfD(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label>F</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="decimal"
-            value={wfF}
-            onChange={(e) => setWfF(e.target.value)}
-          />
-        </div>
+      <div className="field">
+        <label>Week grade D (14 to 17): fine</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={wfD}
+          onChange={(e) => setWfD(e.target.value)}
+        />
+      </div>
+      <div className="field">
+        <label>Week grade F (under 14): fine</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={wfF}
+          onChange={(e) => setWfF(e.target.value)}
+        />
       </div>
 
-      <div className="divider" style={{ margin: "16px 0" }} />
+      <div className="divider" style={{ margin: "18px 0" }} />
 
-      {/* runs */}
+      {/* Runs */}
+      <SubLabel>Runs</SubLabel>
       <label className="check-row">
         <input
           type="checkbox"
@@ -874,92 +1110,88 @@ function SettingsPanel({
         <span>A bad-body day waives that day&apos;s run</span>
       </label>
 
-      <div className="muted" style={{ fontSize: 12, margin: "12px 0 6px" }}>
-        Daily run (km) by grade
-      </div>
-      <div className="form-row">
-        <div className="field">
-          <label>Yellow</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="decimal"
-            value={drkY}
-            onChange={(e) => setDrkY(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label>Red</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="decimal"
-            value={drkR}
-            onChange={(e) => setDrkR(e.target.value)}
-          />
-        </div>
-      </div>
+      <GroupLabel>Daily run distance</GroupLabel>
       <div className="field">
-        <label>Critical</label>
+        <label>Yellow day (2 of 4): km</label>
         <input
           type="text"
-          min={0}
+          inputMode="decimal"
+          value={drkY}
+          onChange={(e) => setDrkY(e.target.value)}
+        />
+      </div>
+      <div className="field">
+        <label>Red day (1 of 4): km</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={drkR}
+          onChange={(e) => setDrkR(e.target.value)}
+        />
+      </div>
+      <div className="field">
+        <label>Critical day (0 of 4): km</label>
+        <input
+          type="text"
           inputMode="decimal"
           value={drkC}
           onChange={(e) => setDrkC(e.target.value)}
         />
       </div>
-      <div className="muted" style={{ fontSize: 12, margin: "4px 0 6px" }}>
-        Weekly run (km) by grade
+
+      <GroupLabel>Weekly run distance</GroupLabel>
+      <div className="field">
+        <label>Week grade C: km</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={wrkC}
+          onChange={(e) => setWrkC(e.target.value)}
+        />
       </div>
-      <div className="form-row">
-        <div className="field">
-          <label>C</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="decimal"
-            value={wrkC}
-            onChange={(e) => setWrkC(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label>F</label>
-          <input
-            type="text"
-            min={0}
-            inputMode="decimal"
-            value={wrkF}
-            onChange={(e) => setWrkF(e.target.value)}
-          />
-        </div>
+      <div className="field">
+        <label>Week grade F: km</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={wrkF}
+          onChange={(e) => setWrkF(e.target.value)}
+        />
       </div>
 
-      <div className="divider" style={{ margin: "16px 0" }} />
+      <div className="divider" style={{ margin: "18px 0" }} />
 
-      {/* toggles */}
+      {/* Escalation */}
+      <SubLabel>Escalation</SubLabel>
       <label className="check-row">
         <input
           type="checkbox"
           checked={escalationEnabled}
           onChange={(e) => setEscalationEnabled(e.target.checked)}
         />
-        <span>Escalate repeated penalties</span>
+        <span>Escalate repeated identical penalties (3 in a row steps up)</span>
       </label>
+
+      <div className="divider" style={{ margin: "18px 0" }} />
+
+      {/* Partner */}
+      <SubLabel>Partner</SubLabel>
       <label className="check-row">
         <input
           type="checkbox"
           checked={notifyPartner}
           onChange={(e) => setNotifyPartner(e.target.checked)}
         />
-        <span>Notify my partner of scoring</span>
+        <span>Send my daily and weekly verdicts to my partner</span>
       </label>
 
-      <div className="divider" style={{ margin: "16px 0" }} />
+      <div className="divider" style={{ margin: "18px 0" }} />
 
-      {/* rewards */}
+      {/* Rewards */}
+      <SubLabel>Rewards</SubLabel>
+      <Help>What you earn for a strong run. The coach reads these back to you.</Help>
       <div className="field">
-        <label>Reward: three Green days</label>
+        <label>Three Green days</label>
         <textarea
           rows={2}
           value={rcGreen3}
@@ -967,7 +1199,7 @@ function SettingsPanel({
         />
       </div>
       <div className="field">
-        <label>Reward: an S week</label>
+        <label>An S week</label>
         <textarea
           rows={2}
           value={rcSWeek}
@@ -975,7 +1207,7 @@ function SettingsPanel({
         />
       </div>
       <div className="field">
-        <label>Reward: a perfect month</label>
+        <label>A perfect month</label>
         <textarea
           rows={2}
           value={rcPerfect}
@@ -983,10 +1215,28 @@ function SettingsPanel({
         />
       </div>
 
-      <div className="btn-row" style={{ marginTop: 6, flexWrap: "wrap" }}>
+      <div className="btn-row" style={{ marginTop: 8 }}>
         <button className="btn btn-primary btn-auto" disabled={busy} onClick={save}>
           {busy ? "Saving..." : "Save settings"}
         </button>
+      </div>
+
+      <div className="divider" style={{ margin: "18px 0" }} />
+
+      {/* Danger */}
+      <SubLabel>Danger</SubLabel>
+      <button
+        className="btn btn-ghost btn-auto btn-danger"
+        disabled={busy}
+        onClick={onReset}
+      >
+        Reset outstanding
+      </button>
+      <p className="muted" style={{ margin: "6px 0 0", fontSize: 12 }}>
+        Waives every pending fine and run and lifts the lock. Your fund total
+        stays.
+      </p>
+      <div style={{ marginTop: 14 }}>
         <button
           className="btn btn-ghost btn-auto btn-danger"
           disabled={busy}
