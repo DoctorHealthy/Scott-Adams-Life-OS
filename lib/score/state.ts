@@ -180,8 +180,11 @@ export async function loadScoreState(
     };
   });
 
+  // The week "so far" is graded over COMPLETED days only. Today is still in
+  // progress (judged at cutoff, like the cron), so counting its partial score
+  // would wrongly drag the standing down on a Wednesday afternoon.
   const daysSoFar = weekCells
-    .filter((c) => !c.isFuture)
+    .filter((c) => !c.isFuture && !c.isToday)
     .map((c) => scoreFor(c.date));
   const week = weekScore(weekStart, daysSoFar);
 

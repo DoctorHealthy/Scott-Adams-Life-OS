@@ -118,6 +118,7 @@ export default async function PartnerPage() {
   let friend = null;
   let friendFundName = "";
   let friendFundTargetEur: number | null = null;
+  let friendScoringEnabled = false;
   if (friendId) {
     const [
       { data: fProfile },
@@ -148,6 +149,7 @@ export default async function PartnerPage() {
     const fCfg = readScoreConfig(fProfile?.coaching_prefs);
     friendFundName = fCfg.fund.name;
     friendFundTargetEur = fCfg.fund.targetEur;
+    friendScoringEnabled = fCfg.enabled;
 
     const hidden = new Set(readHiddenSystems(fProfile?.coaching_prefs));
     const fSys = (
@@ -207,7 +209,9 @@ export default async function PartnerPage() {
       label: string;
       status: string;
     }[];
-    if (fRows.length > 0) {
+    // Show the partner's accountability whenever they have scoring on, even
+    // before their first fine (empty rows just compute to a zero balance).
+    if (friendScoringEnabled || fRows.length > 0) {
       const finesDone = fRows
         .filter((r) => r.kind === "fine" && r.status === "done")
         .reduce((a, r) => a + Number(r.amount_eur ?? 0), 0);

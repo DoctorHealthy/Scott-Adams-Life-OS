@@ -399,8 +399,11 @@ export function computeLock(
   ledger: LedgerRowLike[],
   greensByDateAsc: { date: string; green: boolean }[]
 ): LockState {
+  // Only a PENDING lock is active. A lifted lock (status done, via liftLock or
+  // the cron's green-day release) or a waived one is resolved and never
+  // re-locks, no matter what the green-day history looks like.
   const locks = ledger
-    .filter((r) => r.kind === "lock" && r.status !== "waived")
+    .filter((r) => r.kind === "lock" && r.status === "pending")
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   if (locks.length === 0) return { locked: false, rule: null, since: null };
 
