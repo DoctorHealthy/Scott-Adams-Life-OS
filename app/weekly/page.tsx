@@ -140,7 +140,13 @@ export default async function WeeklyPage() {
 
           <ScoreCard
             state={scoreState}
-            systems={systems.map((s) => ({ id: s.id, name: s.name }))}
+            systems={systems.map((s) => ({
+              id: s.id,
+              name: s.name,
+              cadence: s.cadence,
+              metric_type: s.metric_type,
+              target_per_week: s.target_per_week,
+            }))}
             today={today}
           />
 

@@ -23,7 +23,22 @@ import {
 
 type Tone = "green" | "yellow" | "red" | "black";
 type ActionResult = { ok: true } | { error: string };
-type PickSystem = { id: string; name: string };
+type PickSystem = {
+  id: string;
+  name: string;
+  cadence: "daily" | "weekly";
+  metric_type: string;
+  target_per_week: number | null;
+};
+
+// Show whether a scored system counts daily or over the week, so it is obvious
+// why a Nx/week habit is not dragging the daily grade (and how to change it).
+function cadenceTag(s: PickSystem): string {
+  if (s.metric_type === "number")
+    return `counter, ${s.target_per_week ?? "?"}x/wk`;
+  if (s.cadence === "weekly") return `weekly, ${s.target_per_week ?? "?"}x/wk`;
+  return "daily";
+}
 
 const TONE_COLOR: Record<Tone, string> = {
   green: "var(--good)",
@@ -132,7 +147,13 @@ export default function ScoreCard({
                     checked={setupIds.includes(s.id)}
                     onChange={() => toggleSetup(s.id)}
                   />
-                  <span>{s.name}</span>
+                  <span>
+                    {s.name}
+                    <span className="muted" style={{ fontSize: 12 }}>
+                      {" "}
+                      ({cadenceTag(s)})
+                    </span>
+                  </span>
                 </label>
               ))}
             </div>
@@ -187,7 +208,7 @@ export default function ScoreCard({
             {weekProjection}
           </span>
           <span className="muted" style={{ fontSize: 11 }}>
-            projected
+            so far
           </span>
         </span>
       </div>
@@ -990,7 +1011,8 @@ function SettingsPanel({
       <SubLabel>Scored systems</SubLabel>
       <Help>
         Daily systems set your daily grade. Weekly systems (Nx/week) are judged
-        once at week end.
+        once at week end, never daily. Change a system between daily and weekly
+        (and set its times-per-week) on the system itself under Systems.
       </Help>
       {systems.length === 0 ? (
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>
@@ -1004,7 +1026,13 @@ function SettingsPanel({
               checked={sysIds.includes(s.id)}
               onChange={() => toggleSys(s.id)}
             />
-            <span>{s.name}</span>
+            <span>
+              {s.name}
+              <span className="muted" style={{ fontSize: 12 }}>
+                {" "}
+                ({cadenceTag(s)})
+              </span>
+            </span>
           </label>
         ))
       )}

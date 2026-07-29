@@ -162,7 +162,7 @@ export function TodayScoreCard({ data }: { data: TodayScoreData }) {
         }}
       >
         <span className="muted">
-          This week {data.weekPoints}/{data.weekMax}, projected{" "}
+          This week {data.weekPoints}/{data.weekMax}, grade so far{" "}
           <span style={{ color: weekColor, fontWeight: 700 }}>{data.weekProjection}</span>
         </span>
         <span className="muted" style={{ flexShrink: 0, textAlign: "right" }}>
