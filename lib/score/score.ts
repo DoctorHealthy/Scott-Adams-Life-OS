@@ -14,7 +14,7 @@ import {
   targetBedtime,
   type SleepConfig,
 } from "@/lib/sleep/sleep";
-import { readCounters } from "@/lib/tracking/tracking";
+import { readCounters, windowCount } from "@/lib/tracking/tracking";
 import type { SystemStatus } from "@/lib/types";
 import type { ScoreConfig, ScoreGradeDay, ScoreGradeWeek } from "./config";
 import { eur, exceptionKindOn } from "./config";
@@ -27,7 +27,19 @@ export type ScoredSystemLike = {
   domain: string | null;
   metric_type: string;
   cadence: "daily" | "weekly";
+  target_per_week: number | null;
+  unit?: string | null;
 };
+
+// A scored system is judged over the WEEK (not per day) when it is weekly
+// cadence or a counter. Daily systems drive the daily grade; weekly ones are
+// judged only at week end (confirmed with Mark: never daily-fined).
+export function isWeeklyScored(s: {
+  cadence: "daily" | "weekly";
+  metric_type: string;
+}): boolean {
+  return s.cadence === "weekly" || s.metric_type === "number";
+}
 
 export type ScoreEntryLike = {
   date: string;
@@ -115,7 +127,10 @@ export function dayScore(args: {
   config: ScoreConfig;
 }): DayScore {
   const { date, entry, systems, sleepConfig, config } = args;
-  const perSystem = systems.map((s) => ({
+  // Only DAILY scored systems drive the daily grade. Weekly-target systems are
+  // judged over the week, so they never cost a daily point (or a daily fine).
+  const daily = systems.filter((s) => !isWeeklyScored(s));
+  const perSystem = daily.map((s) => ({
     id: s.id,
     name: s.name,
     done: systemDoneOnDay(s, entry, sleepConfig, config),
@@ -124,7 +139,7 @@ export function dayScore(args: {
   return {
     date,
     points,
-    max: systems.length,
+    max: daily.length,
     perSystem,
     excused: exceptionKindOn(config, date) === "excused",
   };
@@ -133,7 +148,7 @@ export function dayScore(args: {
 // Proportional bands. For max = 4 this reproduces the doc exactly
 // (4 Perfect, 3 Green, 2 Yellow, 1 Red, 0 Critical).
 export function dayGrade(points: number, max: number): ScoreGradeDay {
-  if (max <= 0) return "Critical";
+  if (max <= 0) return "Perfect"; // no daily systems to miss = vacuously clean
   if (points >= max) return "Perfect";
   const pct = points / max;
   if (pct >= 0.75) return "Green";
@@ -153,7 +168,7 @@ export function isGreenDay(points: number, max: number): boolean {
 // Doc thresholds over 28 (S 28, A 25-27, B 22-24, C 18-21, D 14-17, F 0-13),
 // scaled to any max by integer cross-multiplication (no float boundary bugs).
 export function weekGrade(points: number, max: number): ScoreGradeWeek {
-  if (max <= 0) return "F";
+  if (max <= 0) return "S"; // no daily systems this week = vacuously clean
   if (points >= max) return "S";
   const p = points * 28;
   if (p >= max * 25) return "A";
@@ -197,6 +212,40 @@ export function weekScore(weekStart: string, days: DayScore[]): WeekScore {
     baseGrade,
     grade: demoteWeekGrade(baseGrade, criticalDays),
   };
+}
+
+// ---------- weekly-tracked scored systems ----------
+
+export type WeeklySystemResult = {
+  id: string;
+  name: string;
+  unit: string | null;
+  count: number;
+  target: number | null;
+  met: boolean;
+};
+
+// Weekly scored systems judged over [from, to] inclusive. `met` is true once
+// the count reaches the target (or when no target is set). Used for display and
+// for the week-end miss fine.
+export function weeklySystemResults(
+  systems: ScoredSystemLike[],
+  entries: ScoreEntryLike[],
+  from: string,
+  to: string
+): WeeklySystemResult[] {
+  return systems.filter(isWeeklyScored).map((s) => {
+    const count = windowCount(s, entries, from, to);
+    const target = s.target_per_week;
+    return {
+      id: s.id,
+      name: s.name,
+      unit: s.unit ?? null,
+      count,
+      target,
+      met: target == null ? true : count >= target,
+    };
+  });
 }
 
 // ---------- consequences ----------

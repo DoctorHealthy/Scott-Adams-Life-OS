@@ -49,6 +49,7 @@ import {
   consequencesForWeek,
   escalateFine,
   escalateRun,
+  weeklySystemResults,
   type Consequence,
   type DayScore,
   type WeekScore,
@@ -677,6 +678,8 @@ export async function GET(request: Request) {
         domain: s.domain,
         metric_type: s.metric_type,
         cadence: s.cadence,
+        target_per_week: s.target_per_week,
+        unit: s.unit,
       }));
     if (scoredSystems.length === 0) continue;
 
@@ -871,11 +874,36 @@ export async function GET(request: Request) {
         // A weekly lock must clear on a green day in the FOLLOWING week, so date
         // it at the judged week's end; releases then count only later greens.
         for (const r of rows) if (r.kind === "lock") r.date = wkSun;
+
+        // Weekly-tracked scored systems are judged ONCE here (never daily). Each
+        // one short of its weekly target gets a single fine.
+        const wsMissed = weeklySystemResults(scoredSystems, own, from, wkSun).filter(
+          (w) => w.target != null && !w.met
+        );
+        for (const w of wsMissed) {
+          rows.push({
+            user_id: uid,
+            date: wkMon,
+            source: "week",
+            kind: "fine",
+            amount_eur: config.dailyFine,
+            label: `${w.name}: ${w.count}/${w.target} this week. ${eur(config.dailyFine)} to the ${config.fund.name}.`,
+            status: "pending",
+          });
+        }
+
         if (rows.length > 0) await admin.from("ledger").insert(rows);
 
-        if (ownerChat) await sendTelegram(ownerChat, weeklyOwnerText(wkMon, ws, cons, config));
+        const wsOwed = wsMissed.length * config.dailyFine;
+        if (ownerChat) {
+          const suffix = wsMissed.length
+            ? ` Weekly habits missed: ${wsMissed.map((w) => `${w.name} ${w.count}/${w.target}`).join(", ")}.`
+            : "";
+          await sendTelegram(ownerChat, weeklyOwnerText(wkMon, ws, cons, config) + suffix);
+        }
         if (config.notifyPartner && partnerChat) {
-          const owed = cons.reduce((a, c) => (c.kind === "fine" ? a + c.amountEur : a), 0);
+          const owed =
+            cons.reduce((a, c) => (c.kind === "fine" ? a + c.amountEur : a), 0) + wsOwed;
           const hasRun = cons.some((c) => c.kind === "run");
           const hasLock = cons.some((c) => c.kind === "lock");
           if (owed > 0 || hasRun || hasLock) {

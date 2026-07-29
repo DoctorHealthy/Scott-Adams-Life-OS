@@ -7,7 +7,9 @@ import { weekStartOf } from "@/lib/commitments/commitments";
 
 type ActionResult = { ok: true } | { error: string };
 
-const MAX_ACTIVE_PER_WEEK = 3;
+// Sprints are no longer capped at 3; a generous backstop only prevents runaway
+// spam. Distinct from the standing accountability system.
+const MAX_ACTIVE_PER_WEEK = 12;
 
 export async function createCommitment(input: {
   kind: "system_count" | "wake_hold";
@@ -37,7 +39,7 @@ export async function createCommitment(input: {
     .eq("user_id", user.id)
     .eq("week_start", week);
   if ((count ?? 0) >= MAX_ACTIVE_PER_WEEK) {
-    return { error: "Three commitments a week, maximum. Hard lines, not a wish list." };
+    return { error: "That is a lot of sprints for one week. Keep it to what you can actually hold." };
   }
 
   // Build the label from real data so it always matches what code will judge.

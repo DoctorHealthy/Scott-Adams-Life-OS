@@ -10,7 +10,14 @@ export type ScoreGradeDay = "Perfect" | "Green" | "Yellow" | "Red" | "Critical";
 export type ScoreGradeWeek = "S" | "A" | "B" | "C" | "D" | "F";
 
 export type ExceptionKind = "excused" | "bad_body";
-export type ScoreException = { date: string; reason: string; kind: ExceptionKind };
+// A date range (inclusive). Single-day exceptions have from === to. Old stored
+// exceptions used {date}; the reader migrates those to {from: date, to: date}.
+export type ScoreException = {
+  from: string;
+  to: string;
+  reason: string;
+  kind: ExceptionKind;
+};
 
 export type FundConfig = { name: string; targetEur: number | null };
 export type RewardCatalog = { green3: string; sWeek: string; perfectMonth: string };
@@ -60,6 +67,8 @@ export const DEFAULT_SCORE_CONFIG: ScoreConfig = {
   },
   exceptions: [],
 };
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // ---- small defensive coercers (same spirit as the rest of the codebase) ----
 function bool(v: unknown, d: boolean): boolean {
@@ -136,12 +145,23 @@ export function readScoreConfig(
     exceptions: Array.isArray(s.exceptions)
       ? s.exceptions
           .filter(isObj)
-          .map((e) => ({
-            date: str(e.date, ""),
-            reason: str(e.reason, ""),
-            kind: (e.kind === "bad_body" ? "bad_body" : "excused") as ExceptionKind,
-          }))
-          .filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date))
+          .map((e) => {
+            // Migrate the old single-date shape {date} to a range.
+            const from =
+              typeof e.from === "string"
+                ? e.from
+                : typeof e.date === "string"
+                  ? (e.date as string)
+                  : "";
+            const to = typeof e.to === "string" ? e.to : from;
+            return {
+              from,
+              to: to >= from ? to : from,
+              reason: str(e.reason, ""),
+              kind: (e.kind === "bad_body" ? "bad_body" : "excused") as ExceptionKind,
+            };
+          })
+          .filter((e) => DATE_RE.test(e.from) && DATE_RE.test(e.to))
       : d.exceptions,
   };
 }
@@ -158,7 +178,7 @@ export function exceptionOn(
   config: ScoreConfig,
   date: string
 ): ScoreException | null {
-  return config.exceptions.find((e) => e.date === date) ?? null;
+  return config.exceptions.find((e) => date >= e.from && date <= e.to) ?? null;
 }
 
 export function exceptionKindOn(

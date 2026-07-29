@@ -16,11 +16,13 @@ import {
   fundBalance,
   fundContributed,
   fundProgressPct,
+  weeklySystemResults,
   type DayScore,
   type WeekScore,
   type LockState,
   type ScoredSystemLike,
   type ScoreEntryLike,
+  type WeeklySystemResult,
 } from "./score";
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
@@ -64,6 +66,7 @@ export type ScoreState = {
   today: string;
   hasScoredSystems: boolean;
   scoredSystems: { id: string; name: string }[];
+  weeklySystems: WeeklySystemResult[]; // weekly-tracked scored systems, this week's progress
 
   todayScore: DayScore;
   todayGrade: ScoreGradeDay;
@@ -98,7 +101,7 @@ export async function loadScoreState(
       supabase.from("users").select("coaching_prefs").eq("id", userId).single(),
       supabase
         .from("systems")
-        .select("id, name, domain, cadence, metric_type, target_per_week")
+        .select("id, name, domain, cadence, metric_type, target_per_week, unit")
         .eq("user_id", userId)
         .eq("active", true)
         .order("sort_order", { ascending: true }),
@@ -130,6 +133,7 @@ export async function loadScoreState(
     cadence: "daily" | "weekly";
     metric_type: string;
     target_per_week: number | null;
+    unit: string | null;
   }[]);
 
   const scored: ScoredSystemLike[] = config.systemIds
@@ -141,6 +145,8 @@ export async function loadScoreState(
       domain: s.domain,
       metric_type: s.metric_type,
       cadence: s.cadence,
+      target_per_week: s.target_per_week,
+      unit: s.unit,
     }));
 
   const entries = (entryRows ?? []) as ScoreEntryLike[];
@@ -178,6 +184,9 @@ export async function loadScoreState(
     .filter((c) => !c.isFuture)
     .map((c) => scoreFor(c.date));
   const week = weekScore(weekStart, daysSoFar);
+
+  // Weekly-tracked scored systems: this week's count so far vs target.
+  const weeklySystems = weeklySystemResults(scored, entries, weekStart, today);
 
   // Green flags (ascending, excused days omitted so a sick day never breaks a
   // streak) drive the live lock computation.
@@ -222,6 +231,7 @@ export async function loadScoreState(
     today,
     hasScoredSystems: scored.length > 0,
     scoredSystems: scored.map((s) => ({ id: s.id, name: s.name })),
+    weeklySystems,
     todayScore,
     todayGrade,
     weekStart,
@@ -248,12 +258,20 @@ export function scoringCoachBlock(s: ScoreState): string {
   const fundLine = s.fund.targetEur
     ? `${eur(s.fund.balance)} of ${eur(s.fund.targetEur)} toward ${s.fund.name}`
     : `${eur(s.fund.balance)} in ${s.fund.name}`;
-  return [
-    `- Day ${s.today}: ${s.todayScore.points}/${s.todayScore.max}, ${s.todayGrade}`,
+  const lines = [
+    `- Day ${s.today}: ${s.todayScore.points}/${s.todayScore.max} daily habits, ${s.todayGrade}`,
     `- This week so far: ${s.week.points}/${s.week.max}, projected grade ${s.weekProjection}`,
     `- Entertainment lock: ${lockLine}`,
     `- Fund: ${fundLine}`,
     `- Outstanding: ${eur(s.pendingFinesTotal)} in fines, ${s.pendingRuns.length} run(s) pending`,
     `- Escalation: ${s.escalationLevel} identical penalt${s.escalationLevel === 1 ? "y" : "ies"} in a row`,
-  ].join("\n");
+  ];
+  if (s.weeklySystems.length) {
+    lines.push(
+      `- Weekly habits (judged at week end): ${s.weeklySystems
+        .map((w) => `${w.name} ${w.count}/${w.target ?? "?"}${w.met ? " met" : ""}`)
+        .join("; ")}`
+    );
+  }
+  return lines.join("\n");
 }

@@ -111,28 +111,113 @@ export async function disableScoring(): Promise<ActionResult> {
 }
 
 export async function declareException(
-  date: string,
+  from: string,
+  to: string,
   reason: string,
   kind: ExceptionKind
 ): Promise<ActionResult> {
   const { supabase, user } = await authed();
   if (!user) return { error: "Not authenticated." };
-  if (!DATE_RE.test(date)) return { error: "Bad date." };
+  if (!DATE_RE.test(from) || !DATE_RE.test(to)) return { error: "Bad date." };
+  const lo = from <= to ? from : to;
+  const hi = from <= to ? to : from;
   const k: ExceptionKind = kind === "bad_body" ? "bad_body" : "excused";
   const { prefs, config } = await loadPrefs(supabase, user.id);
-  const exceptions = config.exceptions.filter((e) => e.date !== date);
-  exceptions.push({ date, reason: reason.slice(0, 200), kind: k });
+  // Replace any identical range; keep the rest.
+  const exceptions = config.exceptions.filter((e) => !(e.from === lo && e.to === hi));
+  exceptions.push({ from: lo, to: hi, reason: reason.slice(0, 200), kind: k });
   const next = readScoreConfig({ scoring: { ...config, exceptions } });
   return saveScoring(supabase, user.id, prefs, next);
 }
 
-export async function removeException(date: string): Promise<ActionResult> {
+export async function removeException(from: string, to: string): Promise<ActionResult> {
   const { supabase, user } = await authed();
   if (!user) return { error: "Not authenticated." };
   const { prefs, config } = await loadPrefs(supabase, user.id);
-  const exceptions = config.exceptions.filter((e) => e.date !== date);
+  const exceptions = config.exceptions.filter((e) => !(e.from === from && e.to === to));
   const next = readScoreConfig({ scoring: { ...config, exceptions } });
   return saveScoring(supabase, user.id, prefs, next);
+}
+
+// Clear the entertainment lock manually (its release is otherwise earned by
+// green days). Resolves every pending lock row.
+export async function liftLock(today: string): Promise<ActionResult> {
+  const { supabase, user } = await authed();
+  if (!user) return { error: "Not authenticated." };
+  const resolved = DATE_RE.test(today) ? today : null;
+  const { error } = await supabase
+    .from("ledger")
+    .update({ status: "done", resolved_on: resolved })
+    .eq("user_id", user.id)
+    .eq("kind", "lock")
+    .eq("status", "pending");
+  if (error) return { error: error.message };
+  revalidatePath("/today");
+  revalidatePath("/weekly");
+  revalidatePath("/partner");
+  return { ok: true };
+}
+
+// A clean slate: waive every outstanding fine and run and lift the lock. The
+// fund total (paid fines) is untouched. For starting a week fresh.
+export async function resetAccountability(today: string): Promise<ActionResult> {
+  const { supabase, user } = await authed();
+  if (!user) return { error: "Not authenticated." };
+  const resolved = DATE_RE.test(today) ? today : null;
+  const { error: e1 } = await supabase
+    .from("ledger")
+    .update({ status: "waived" })
+    .eq("user_id", user.id)
+    .in("kind", ["fine", "run"])
+    .eq("status", "pending");
+  if (e1) return { error: e1.message };
+  const { error: e2 } = await supabase
+    .from("ledger")
+    .update({ status: "done", resolved_on: resolved })
+    .eq("user_id", user.id)
+    .eq("kind", "lock")
+    .eq("status", "pending");
+  if (e2) return { error: e2.message };
+  revalidatePath("/today");
+  revalidatePath("/weekly");
+  revalidatePath("/partner");
+  return { ok: true };
+}
+
+// Add a fine or run by hand (the cron auto-logs the rest at cutoff; this is for
+// adjustments).
+export async function addManualLedger(input: {
+  kind: "fine" | "run";
+  amountEur?: number;
+  distanceKm?: number;
+  label: string;
+  today: string;
+}): Promise<ActionResult> {
+  const { supabase, user } = await authed();
+  if (!user) return { error: "Not authenticated." };
+  if (!DATE_RE.test(input.today)) return { error: "Bad date." };
+  const isFine = input.kind === "fine";
+  const amount = isFine ? Math.round((input.amountEur ?? 0) * 100) / 100 : null;
+  const distance = !isFine ? Math.round((input.distanceKm ?? 0) * 10) / 10 : null;
+  if (isFine && (!amount || amount <= 0)) return { error: "Amount must be positive." };
+  if (!isFine && (!distance || distance <= 0)) return { error: "Distance must be positive." };
+  const { error } = await supabase.from("ledger").insert({
+    user_id: user.id,
+    date: input.today,
+    source: "manual",
+    kind: input.kind,
+    amount_eur: amount,
+    distance_km: distance,
+    label:
+      input.label.trim().slice(0, 120) ||
+      (isFine ? "Manual fine" : "Manual run"),
+    status: "pending",
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/today");
+  revalidatePath("/weekly");
+  revalidatePath("/partner");
+  return { ok: true };
 }
 
 // ---- ledger obligations (RLS guarantees own-rows only) ----

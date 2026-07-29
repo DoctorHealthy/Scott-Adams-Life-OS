@@ -120,27 +120,34 @@ export function commitmentAtRisk(
 // ---------- momentum (28-day adherence per system) ----------
 
 export function momentumPct(
-  s: SystemTrackingLike,
+  s: SystemTrackingLike & { created_at?: string },
   entries: TrackingEntryLike[],
   today: string
 ): number | null {
-  const from = addDays(today, -27);
+  const windowStart = addDays(today, -27);
+  // Never count days before the system existed, so a fresh system is not
+  // punished for the 28-day window it did not exist in.
+  const created = s.created_at ? s.created_at.slice(0, 10) : null;
+  const from = created && created > windowStart ? created : windowStart;
+  const days = diffDays(from, today) + 1; // inclusive
+  if (days <= 0) return null;
+
   if (s.cadence === "weekly" || s.metric_type === "number") {
     const target = s.target_per_week;
     if (!target) return null;
+    const weeks = Math.max(1, days / 7);
     const count = windowCount(s, entries, from, today);
-    return Math.min(100, Math.round((count / (target * 4)) * 100));
+    return Math.min(100, Math.round((count / (target * weeks)) * 100));
   }
-  let logged = 0;
+
+  // Daily: score over every day it should have run (unlogged = a miss), so a
+  // habit done only occasionally no longer reads as maxed.
   let score = 0;
   for (const e of entries) {
     if (e.date < from || e.date > today) continue;
     const st = e.system_statuses?.[s.id] as SystemStatus | undefined;
-    if (!st) continue;
-    logged++;
     if (st === "done") score += 1;
     else if (st === "floor") score += 0.5;
   }
-  if (logged === 0) return null;
-  return Math.min(100, Math.round((score / logged) * 100));
+  return Math.min(100, Math.round((score / days) * 100));
 }
